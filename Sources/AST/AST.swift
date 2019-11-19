@@ -1,70 +1,70 @@
+//
+//  AST3.swift
+//  AST
+//
+//  Created by 林煒峻 on 2019/11/18.
+//
+
 import Foundation
-public protocol ExprAST: class {
-//    init()
+import Token
+
+//public struct Prototype {
+//    let name: String
+//    let params: [String]
+//}
+//
+//public typealias Definition = Function
+//public struct Function {
+//    let prototype: Prototype
+//    let expr: Expr
+//}
+
+public indirect enum Expr: Equatable {
+    case number(Double)
+    case variable(String)
+    /// lhs op rhs
+    case binary(Expr, BinaryOperator, Expr)
+    
+    /// L5 AST Extensions for If/Then/Else
+    /// std::unique_ptr<ExprAST> Cond, Then, Else;
+    /// Cond, Then, Else;
+    case `if`(Expr, Expr, Expr)
+    case call(String, [Expr])
+    /// name params
+    case prototype(String, [String])
+    /// name params expr
+    case function(String, [String], Expr)
 }
 
-/// NumberExprAST - Expression class for numeric literals like "1.0".
-public class NumberExprAST: ExprAST {
-    let val: Double
-    public init(val: Double) {
-        self.val = val
-    }
-}
-
-/// VariableExprAST - Expression class for referencing a variable, like "a".
-public class VariableExprAST: ExprAST {
-    let name: String
-    public init(name: String) {
-        self.name = name
-    }
-}
-
-/// BinaryExprAST - Expression class for a binary operator.
-public class BinaryExprAST: ExprAST {
-    let op: Character
-    let lhs: ExprAST
-    let rhs: ExprAST
-    public init(op: Character, lhs: ExprAST, rhs: ExprAST) {
-        self.op = op
-        self.lhs = lhs
-        self.rhs = rhs
-    }
-}
-
-/// CallExprAST - Expression class for function calls.
-public class CallExprAST: ExprAST {
-    // std::string Callee;
-    // std::vector<std::unique_ptr<ExprAST>> Args;
-    let callee: String
-    let args: [ExprAST]
-    public init(callee: String, args: [ExprAST]) {
-        self.callee = callee
-        self.args = args
-    }
-}
-
-/// PrototypeAST - This class represents the "prototype" for a function,
-/// which captures its name, and its argument names (thus implicitly the number
-/// of arguments the function takes).
-public class PrototypeAST: ExprAST {
-    // std::string Name;
-    // std::vector<std::string> Args;
-    let name: String
-    let args: [String]
-    public init(name: String, args: [String]) {
-        self.name = name
-        self.args = args
-    }
-}
-
-/// FunctionAST - This class represents a function definition itself.
-public class FunctionAST: ExprAST {
-    // std::unique_ptr<PrototypeAST> Proto;
-    // std::unique_ptr<ExprAST> Body;
-    let proto: PrototypeAST
-    let body: ExprAST
-    public init(proto: PrototypeAST, body: ExprAST) {
-        self.proto = proto
-        self.body = body
+extension Expr: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case let .number(num):
+            return "\(num)"
+        case let .variable(`var`):
+            return "\(`var`)"
+        case let .binary(lhs, op, rhs):
+            return """
+            (\(lhs) \(op) \(rhs))
+            """
+            
+        case let .if(cond, then, `else`):
+            return """
+            if \(cond) then
+                \(then)
+            else
+                \(`else`);
+            """
+        case let .call(name, exprs):
+            return "\(name)(\(exprs.map{$0.description}.joined(separator: " ")))"
+        case let .prototype(name, args):
+            return "extern \(name)(\(args.map{$0.description}.joined(separator: " ")))"
+        case let .function(name, args, expr):
+            return """
+            func \(name)(\(args.map{$0.description}.joined(separator: " "))) {
+            \(expr)
+            }
+            """
+        }
     }
 }

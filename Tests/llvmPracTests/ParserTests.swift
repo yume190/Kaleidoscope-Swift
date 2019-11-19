@@ -13,44 +13,177 @@ import class Foundation.Bundle
 @testable import Parser
 
 final class ParserTests: XCTestCase {
-//    func testKeyword_def() throws {
-//        let code = "def"
-//        let exprs = Parser(input: code).parse()
-//        XCTAssertEqual(exprs[0], Expr.)
-//    }
     
     func testNumber() throws {
         let code = "3"
         let exprs = Parser(input: code).parse()
         
-        XCTAssertEqual(exprs[0], Expr.number(3))
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function("", [], .number(3))
+        )
     }
     func testId1() throws {
         let code = "fib"
         let exprs = Parser(input: code).parse()
         
-        XCTAssertEqual(exprs[0], Expr.variable("fib"))
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function("", [], Expr.variable("fib"))
+        )
     }
     
     func testId2() throws {
         let code = "fib()"
         let exprs = Parser(input: code).parse()
         
-        XCTAssertEqual(exprs[0], Expr.call("fib", []))
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function("", [], Expr.call("fib", []))
+        )
     }
     
     func testId3() throws {
         let code = "fib(a)"
         let exprs = Parser(input: code).parse()
         
-        XCTAssertEqual(exprs[0], Expr.call("fib", []))
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function("", [], Expr.call("fib", [.variable("a")]))
+        )
     }
     
     func testId4() throws {
         let code = "fib(a, b)"
         let exprs = Parser(input: code).parse()
         
-        XCTAssertEqual(exprs[0], Expr.call("fib", []))
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function("", [], Expr.call("fib", [.variable("a"), .variable("b")]))
+        )
+    }
+    
+    func testExtern1() throws {
+        let code = "extern printd();"
+        let exprs = Parser(input: code).parse()
+        
+        XCTAssertEqual(
+            exprs[0],
+            Expr.prototype("printd", [])
+        )
+    }
+    
+    func testExtern2() throws {
+        let code = "extern printd(x);"
+        let exprs = Parser(input: code).parse()
+        
+        XCTAssertEqual(
+            exprs[0],
+            Expr.prototype("printd", ["x"])
+        )
+    }
+    
+    func testExtern3() throws {
+        let code = "extern printd(x y);"
+        let exprs = Parser(input: code).parse()
+        
+        XCTAssertEqual(
+            exprs[0],
+            Expr.prototype("printd", ["x", "y"])
+        )
+    }
+    
+    func testIf() throws {
+        let code = """
+        if x < 3 then
+            1
+        else
+            x
+        """
+        let exprs = Parser(input: code).parse()
+        
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function(
+                "",
+                [],
+                .if(
+                    .binary(.variable("x"), .less, .number(3)),
+                    .number(1),
+                    .variable("x")
+                )
+            )
+        )
+    }
+    
+    /// <
+    /// + -
+    /// *
+    func testOps() {}
+    /**
+        a < ((b + c) - (d * e))
+          <
+         / \
+        a   -
+           / \
+          +   *
+         / \ / \
+        b  c d  e
+     */
+    func testOp1() throws {
+        let code = "a < b + c - d * e"
+        let exprs = Parser(input: code).parse()
+        
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function(
+                "",
+                [],
+                .binary(
+                    .variable("a"),
+                    .less,
+                    .binary(
+                        .binary(.variable("b"), .plus, .variable("c")),
+                        .minus,
+                        .binary(.variable("d"), .times, .variable("e"))
+                    )
+                )
+                
+            )
+        )
+    }
+    
+    /**
+        a < ((b - c) + (d * e))
+          <
+         / \
+        a   +
+           / \
+          -   *
+         / \ / \
+        b  c d  e
+     */
+    func testOp2() throws {
+        let code = "a < b - c + d * e"
+        let exprs = Parser(input: code).parse()
+        
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function(
+                "",
+                [],
+                .binary(
+                    .variable("a"),
+                    .less,
+                    .binary(
+                        .binary(.variable("b"), .minus, .variable("c")),
+                        .plus,
+                        .binary(.variable("d"), .times, .variable("e"))
+                    )
+                )
+                
+            )
+        )
     }
     
     func testIdentifier() throws {

@@ -1,3 +1,4 @@
+/// L5 Lexer Extensions for If/Then/Else
 public enum Keyword: String {
     case def
     case extern
