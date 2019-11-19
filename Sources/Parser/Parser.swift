@@ -1,137 +1,264 @@
-enum ParseError: Error {
-    case unexpectedToken(Token)
-    case unexpectedEOF
+//
+//  Parser.swift
+//  Parser
+//
+//  Created by 林煒峻 on 2019/11/18.
+//
+
+import Foundation
+import Token
+import AST
+import Lexer
+
+public class Parser {
+    private let lexer: Lexer
+    private var currentToken: Token? = nil
+    private let binopPrecedence: [BinaryOperator: Int] = [
+        .less: 10,
+        .plus: 20,
+        .minus: 20,
+        .times: 40
+    ]
+    
+    @inline(__always)
+    public init(lexer: Lexer) {
+        self.lexer = lexer
+    }
+    
+    @inline(__always)
+    public init(input: String) {
+        self.lexer = Lexer(input: input)
+    }
+    
+    @inline(__always)
+    public final func parse() -> [Expr] {
+        return self.map{$0}
+    }
 }
 
-class Parser {
-    let tokens: [Token]
-    var index = 0
-
-    init(tokens: [Token]) {
-        self.tokens = tokens
+extension Parser: IteratorProtocol {
+    func nextToken() -> Token? {
+        self.currentToken = lexer.next()
+        return self.currentToken
     }
-
-    var currentToken: Token? {
-        return index < tokens.count ? tokens[index] : nil
-    }
-
-    func consumeToken(n: Int = 1) {
-        index += n
-    }
-
-    func parseFile() throws -> File {
-        let file = File()
-        while let tok = currentToken {
-            switch tok {
-            case .extern:
-                file.addExtern(try parseExtern())
-            case .def:
-                file.addDefinition(try parseDefinition())
-            default:
-                let expr = try parseExpr()
-                try consume(.semicolon)
-                file.addExpression(expr)
-            }
+    
+    /// expression
+    ///   ::= primary binoprhs
+    ///
+    private func ParseExpression() -> Expr? {
+        guard let lhs = self.parsePrimary() else {
+            return nil
         }
-        return file
+        return self.parseBinOpRHS(exprPrec: 0, lhs: lhs)
     }
-
-    func parseExpr() throws -> Expr {
-        guard let token = currentToken else {
-            throw ParseError.unexpectedEOF
+    
+    private func getTokenPrecedence() -> Int {
+        guard case let .`operator`(op) = self.currentToken else {
+            return -1
         }
-        var expr: Expr
-        switch token {
-        case .leftParen: // ( <expr> )
-            consumeToken()
-            expr = try parseExpr()
-            try consume(.rightParen)
-        case .number(let value):
-            consumeToken()
-            expr = .number(value)
-        case .identifier(let value):
-            consumeToken()
-            if case .leftParen? = currentToken {
-                let params = try parseCommaSeparated(parseExpr)
-                expr = .call(value, params)
-            } else {
-                expr = .variable(value)
+        return self.binopPrecedence[op] ?? -1
+    }
+    
+    /// binoprhs
+    ///   ::= ('+' primary)*
+    func parseBinOpRHS(exprPrec: Int, lhs: Expr) -> Expr? {
+        var lhs: Expr = lhs
+        while true {
+            let tokenPrec = self.getTokenPrecedence()
+            if tokenPrec < exprPrec {
+                return lhs
             }
-        case .if: // if <expr> then <expr> else <expr>
-            consumeToken()
-            let cond = try parseExpr()
-            try consume(.then)
-            let thenVal = try parseExpr()
-            try consume(.else)
-            let elseVal = try parseExpr()
-            expr = .ifelse(cond, thenVal, elseVal)
+            
+            // Okay, we know this is a binop.
+            guard case let .operator(binOp) = self.currentToken else {return nil}
+            _ = self.nextToken() // eat binop
+
+
+            guard var rhs = self.parsePrimary() else {
+                return nil
+            }
+            
+            // If BinOp binds less tightly with RHS than the operator after RHS, let
+            // the pending operator take RHS as its LHS.
+            let nextPrec = self.getTokenPrecedence()
+            if tokenPrec < nextPrec {
+                guard let nextRhs = self.parseBinOpRHS(exprPrec: tokenPrec + 1, lhs: rhs) else {
+                    return nil
+                }
+                rhs = nextRhs
+            }
+            
+            // Merge LHS/RHS.
+            lhs = .binary(lhs, binOp, rhs)
+        }
+    }
+    
+    /// prototype
+    ///   ::= id '(' id* ')'
+    func parsePrototype() -> Expr? {
+        guard case let .identifier(fnName) = self.currentToken else {
+            print("Expected function name in prototype")
+            return nil
+        }
+        
+        _ = self.nextToken()
+        
+        if currentToken != .mark(.openParen) {
+            print("Expected '(' in prototype")
+            return nil
+        }
+        
+        var argNames: [String] = []
+        while case let .identifier(id) = self.nextToken() {
+            argNames.append(id)
+        }
+        
+        if currentToken != .mark(.closeParen) {
+            print("Expected ')' in prototype")
+            return nil
+        }
+        
+        _ = self.nextToken() // eat ')'
+        
+        return .prototype(fnName, argNames)
+    }
+    
+    /// primary
+    ///   ::= identifierexpr
+    ///   ::= numberexpr
+    ///   ::= parenexpr
+    private func parsePrimary() -> Expr? {
+        switch self.nextToken() {
+        case .number:
+            return self.parseNumberExpr()
+        case .comment:
+            return self.next()
+        case .identifier:
+            return self.parseIdentifierExpr()
+        case .mark(let mark) where mark == .openParen:
+            return self.parseParenExpr()
         default:
-            throw ParseError.unexpectedToken(token)
+            print("unknown token when expecting an expression")
+            return nil
         }
-
-        if case .operator(let op)? = currentToken {
-            consumeToken()
-            let rhs = try parseExpr()
-            expr = .binary(expr, op, rhs)
-        }
-
-        return expr
     }
-
-    func consume(_ token: Token) throws {
-        guard let tok = currentToken else {
-            throw ParseError.unexpectedEOF
+    
+    /// primary
+    ///   ::= identifierexpr
+    ///   ::= numberexpr
+    ///   ::= parenexpr
+    public func next() -> Expr? {
+        switch self.nextToken() {
+        case .number:
+            return self.parseNumberExpr()
+        case .comment:
+            return self.next()
+        case .identifier:
+            return self.parseIdentifierExpr()
+        case .mark(let mark) where mark == .openParen:
+            return self.parseParenExpr()
+//        case .keyword:
+//            return nil
+//        case .mark:
+//            return nil
+//        case .operator:
+//            return nil
+        default:
+            print("unknown token when expecting an expression")
+            return nil
         }
-        guard token == tok else {
-            throw ParseError.unexpectedToken(token)
-        }
-        consumeToken()
     }
-
-    func parseIdentifier() throws -> String {
-        guard let token = currentToken else {
-            throw ParseError.unexpectedEOF
+    
+    /// numberexpr ::= number
+    private func parseNumberExpr() -> Expr? {
+        guard case let .number(num) = self.currentToken else {
+            return nil
         }
-        guard case .identifier(let name) = token else {
-            throw ParseError.unexpectedToken(token)
+        return .number(num)
+    }
+    
+    /// parenexpr ::= '(' expression ')'
+    private func parseParenExpr() -> Expr? {
+        // (
+        // V = Expr
+        // )
+        return nil
+    }
+    
+    /// identifierexpr
+    ///   ::= identifier
+    ///   ::= identifier '(' expression* ')'
+    private func parseIdentifierExpr() -> Expr? {
+        guard case let .identifier(id) = self.currentToken else {
+            return nil
         }
-        consumeToken()
-        return name
-    }
-
-    func parsePrototype() throws -> Prototype {
-        let name = try parseIdentifier()
-        let params = try parseCommaSeparated(parseIdentifier)
-        return Prototype(name: name, params: params)
-    }
-
-    func parseCommaSeparated<TermType>(_ parseFn: () throws -> TermType) throws -> [TermType] {
-        try consume(.leftParen)
-        var vals = [TermType]()
-        while let tok = currentToken, tok != .rightParen {
-            let val = try parseFn()
-            if case .comma? = currentToken {
-                try consume(.comma)
+        
+        /// eat identifier.
+        _ = self.nextToken()
+        guard self.currentToken == .mark(.openParen) else {
+            return .variable(id)
+        }
+        
+        _ = self.nextToken()
+        guard self.currentToken != .mark(.closeParen) else {
+            return .call(id, [])
+        }
+        
+        var exprs: [Expr] = []
+        
+        while true {
+            if let expr = self.parseExpression() {
+                exprs.append(expr)
+            } else {
+                return nil
             }
-            vals.append(val)
+            
+            if self.currentToken == .mark(.closeParen) {
+                break
+            }
+            
+            if self.currentToken != .mark(.comma) {
+                #warning("log error")
+                // error
+                return nil
+            }
+            
+            _ = self.nextToken()
         }
-        try consume(.rightParen)
-        return vals
+        return .call(id, exprs)
     }
-
-    func parseExtern() throws -> Prototype {
-        try consume(.extern)
-        let proto = try parsePrototype()
-        try consume(.semicolon)
-        return proto
+    
+    private func parseExpression() -> Expr? {
+        return nil
     }
-
-    func parseDefinition() throws -> Definition {
-        try consume(.def)
-        let prototype = try parsePrototype()
-        let expr = try parseExpr()
-        let def = Definition(prototype: prototype, expr: expr)
-        try consume(.semicolon)
-        return def
-    }
+    
+    
+//    static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
+//
+//      // Call.
+//      getNextToken();  // eat (
+//      std::vector<std::unique_ptr<ExprAST>> Args;
+//      if (CurTok != ')') {
+//        while (1) {
+//          if (auto Arg = ParseExpression())
+//            Args.push_back(std::move(Arg));
+//          else
+//            return nullptr;
+//
+//          if (CurTok == ')')
+//            break;
+//
+//          if (CurTok != ',')
+//            return LogError("Expected ')' or ',' in argument list");
+//          getNextToken();
+//        }
+//      }
+//
+//      // Eat the ')'.
+//      getNextToken();
+//
+//      return std::make_unique<CallExprAST>(IdName, std::move(Args));
+//    }
 }
+
+extension Parser: Sequence {}

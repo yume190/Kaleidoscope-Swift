@@ -1,6 +1,7 @@
 import XCTest
 import class Foundation.Bundle
 @testable import Lexer
+@testable import Token
 
 final class LexerTests: XCTestCase {
     func testFullCode1() throws {

@@ -17,12 +17,16 @@ let package = Package(
             name: "llvmPrac",
             dependencies: ["Lexer", "AST", "Parser"]),
         .target(
-            name: "Lexer"),
+            name: "Token"),
         .target(
-            name: "AST"),
+            name: "Lexer",
+            dependencies: ["Token", "AST"]),
+        .target(
+            name: "AST",
+            dependencies: ["Token"]),
         .target(
             name: "Parser",
-            dependencies: ["AST"]),
+            dependencies: ["AST", "Lexer", "Token"]),
         .testTarget(
             name: "llvmPracTests",
             dependencies: ["llvmPrac", "Lexer", "AST", "Parser"]),
