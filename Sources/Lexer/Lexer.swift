@@ -7,14 +7,49 @@ import Token
 
 public class Lexer {
     private final let input: String
-    private final var index: String.Index
 
     @inline(__always)
     public init(input: String) {
         self.input = input
-        self.index = input.startIndex
     }
+    
+    @inline(__always)
+    public final func lex() -> [Token] {
+        return self.map{$0}
+    }
+}
 
+extension Lexer {
+    public class Iterator: IteratorProtocol {
+        private final let input: String
+        private final var index: String.Index
+        @inline(__always)
+        public init(input: String) {
+            self.input = input
+            self.index = input.startIndex
+        }
+        
+        @inline(__always)
+        public func next() -> Token? {
+            // Skip all spaces until a non-space token
+            while let char = currentChar, char.isSpace || char.isNewLine {
+                self.advance()
+            }
+            
+            // If we hit the end of the input, then we're done
+            guard let char = self.currentChar else {
+                return nil
+            }
+        
+            return
+                self._charToken(char) ??
+                self._identifierToken(char) ??
+                self._commentToken(char)
+        }
+    }
+}
+
+extension Lexer.Iterator {
     @inline(__always)
     private final var currentChar: Character? {
         return index < input.endIndex ? input[index] : nil
@@ -25,7 +60,7 @@ public class Lexer {
         var str = ""
         while let char = currentChar, char.isAlphanumeric || char == "." {
             str.append(char)
-            advance()
+            self.advance()
         }
         return str
     }
@@ -75,21 +110,10 @@ public class Lexer {
         }
         return nil
     }
-
-    @inline(__always)
-    public final func lex() -> [Token] {
-//        var toks = [Token]()
-//        while let tok = self.next() {
-//            toks.append(tok)
-//        }
-//        return toks
-        
-        return self.map{$0}
-    }
 }
 
 // MARK: Index move
-extension Lexer {
+extension Lexer.Iterator {
     @inline(__always)
     private final func advance() {
         self.index = self.input.index(after: self.index)
@@ -101,23 +125,8 @@ extension Lexer {
     }
 }
 
-extension Lexer: IteratorProtocol {
-    @inline(__always)
-    public func next() -> Token? {
-        // Skip all spaces until a non-space token
-        while let char = currentChar, char.isSpace || char.isNewLine {
-            advance()
-        }
-        // If we hit the end of the input, then we're done
-        guard let char = currentChar else {
-            return nil
-        }
-    
-        return
-            self._charToken(char) ??
-            self._identifierToken(char) ??
-            self._commentToken(char)
+extension Lexer: Sequence {
+    public __consuming func makeIterator() -> Lexer.Iterator {
+        return Iterator(input: self.input)
     }
 }
-
-extension Lexer: Sequence {}
