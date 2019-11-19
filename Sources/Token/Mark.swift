@@ -13,7 +13,7 @@ public enum Mark: Character {
 }
 
 extension Mark: Tokenable {
-    var token: Token {
+    public var token: Token {
         return .mark(self)
     }
 }

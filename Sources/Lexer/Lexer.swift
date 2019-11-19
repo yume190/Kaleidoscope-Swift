@@ -3,34 +3,7 @@
 #elseif os(Linux)
     import Glibc
 #endif
-
-// extension Character {
-//     var value: Int32 {
-//         return Int32(String(self).unicodeScalars.first!.value)
-//     }
-//     var isSpace: Bool {
-//         return isspace(value) != 0
-//     }
-//     var isAlphanumeric: Bool {
-//         return isalnum(value) != 0 || self == "_"
-//     }
-// }
-
-extension Character {
-    var value: Int32 {
-        return Int32(String(self).unicodeScalars.first!.value)
-    }
-    var isSpace: Bool {
-        return isspace(value) != 0
-    }
-    
-    var isNewLine: Bool {
-        return self == "\n" || self == "\r"
-    }
-    var isAlphanumeric: Bool {
-        return isalnum(value) != 0 || self == "_"
-    }
-}
+import Token
 
 public class Lexer {
     private final let input: String
@@ -46,21 +19,6 @@ public class Lexer {
     private final var currentChar: Character? {
         return index < input.endIndex ? input[index] : nil
     }
-    // private final var current: TokenType? {
-    //     guard let char = self.currentChar else {
-    //         return nil
-    //     }
-    //     return TokenType(rawValue: char)
-    // }
-    
-    // private final var identifier: String {
-    //     var str = ""
-    //     while let char = currentChar, char.isAlphanumeric || Self.identifierChar.contains(char) {
-    //         str.append(char);advance()
-    //     }
-        
-    //     return str
-    // }
 
     @inline(__always)
     private func readIdentifierOrNumber() -> String {
@@ -70,23 +28,6 @@ public class Lexer {
             advance()
         }
         return str
-    }
-
-    @inline(__always)
-    private final var next: Token? {
-        // Skip all spaces until a non-space token
-        while let char = currentChar, char.isSpace || char.isNewLine {
-            advance()
-        }
-        // If we hit the end of the input, then we're done
-        guard let char = currentChar else {
-            return nil
-        }
-    
-        return
-            self._charToken(char) ??
-            self._identifierToken(char) ??
-            self._commentToken(char)
     }
 
     @inline(__always)
@@ -122,16 +63,6 @@ public class Lexer {
         return nil
     }
     
-    
-//    if (LastChar == '#') {
-//      // Comment until end of line.
-//      do
-//        LastChar = getchar();
-//      while (LastChar != EOF && LastChar != '\n' && LastChar != '\r');
-//
-//      if (LastChar != EOF)
-//        return gettok();
-//    }
     @inline(__always)
     private func _commentToken(_ char: Character) -> Token? {
         if char == "#" {
@@ -147,11 +78,13 @@ public class Lexer {
 
     @inline(__always)
     public final func lex() -> [Token] {
-        var toks = [Token]()
-        while let tok = self.next {
-            toks.append(tok)
-        }
-        return toks
+//        var toks = [Token]()
+//        while let tok = self.next() {
+//            toks.append(tok)
+//        }
+//        return toks
+        
+        return self.map{$0}
     }
 }
 
@@ -167,3 +100,24 @@ extension Lexer {
         self.index = self.input.index(before: self.index)
     }
 }
+
+extension Lexer: IteratorProtocol {
+    @inline(__always)
+    public func next() -> Token? {
+        // Skip all spaces until a non-space token
+        while let char = currentChar, char.isSpace || char.isNewLine {
+            advance()
+        }
+        // If we hit the end of the input, then we're done
+        guard let char = currentChar else {
+            return nil
+        }
+    
+        return
+            self._charToken(char) ??
+            self._identifierToken(char) ??
+            self._commentToken(char)
+    }
+}
+
+extension Lexer: Sequence {}

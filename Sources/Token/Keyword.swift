@@ -8,7 +8,7 @@ public enum Keyword: String {
 }
 
 extension Keyword: Tokenable {
-    var token: Token {
+    public var token: Token {
         return .keyword(self)
     }
 }

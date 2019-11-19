@@ -6,7 +6,7 @@ public enum BinaryOperator: Character {
 }
 
 extension BinaryOperator: Tokenable {
-    var token: Token {
+    public var token: Token {
         return .operator(self)
     }
 }
