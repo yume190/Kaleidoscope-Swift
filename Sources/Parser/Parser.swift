@@ -12,13 +12,6 @@ import Lexer
 
 public class Parser {
     private let lexer: Lexer
-    private var currentToken: Token? = nil
-    private let binopPrecedence: [BinaryOperator: Int] = [
-        .less: 10,
-        .plus: 20,
-        .minus: 20,
-        .times: 40
-    ]
     
     @inline(__always)
     public init(lexer: Lexer) {
@@ -26,8 +19,8 @@ public class Parser {
     }
     
     @inline(__always)
-    public init(input: String) {
-        self.lexer = Lexer(input: input)
+    public convenience init(input: String) {
+        self.init(lexer: Lexer(input: input))
     }
     
     @inline(__always)
@@ -36,15 +29,71 @@ public class Parser {
     }
 }
 
-extension Parser: IteratorProtocol {
+extension Parser: Sequence {
+    public __consuming func makeIterator() -> Parser.Iterator {
+        return Iterator(lexer: self.lexer)
+    }
+}
+
+extension Parser {
+    public final class Iterator: IteratorProtocol {
+        private let lexer: Lexer
+        private let iterator : Lexer.Iterator
+        private var currentToken: Token? = nil
+        private let binopPrecedence: [BinaryOperator: Int] = [
+            .less: 10,
+            .plus: 20,
+            .minus: 20,
+            .times: 40
+        ]
+        
+        @inline(__always)
+        public init(lexer: Lexer) {
+            self.lexer = lexer
+            self.iterator = lexer.makeIterator()
+        }
+        
+        @inline(__always)
+        public convenience init(input: String) {
+            self.init(lexer: Lexer(input: input))
+        }
+        
+        /// primary
+        ///   ::= identifierexpr
+        ///   ::= numberexpr
+        ///   ::= parenexpr
+        public func next() -> Expr? {
+            switch self.nextToken() {
+            case .number:
+                return self.parseNumberExpr()
+            case .comment:
+                return self.next()
+            case .identifier:
+                return self.parseIdentifierExpr()
+            case .mark(let mark) where mark == .openParen:
+                return self.parseParenExpr()
+    //        case .keyword:
+    //            return nil
+    //        case .mark:
+    //            return nil
+    //        case .operator:
+    //            return nil
+            default:
+                print("unknown token when expecting an expression")
+                return nil
+            }
+        }
+    }
+}
+ 
+extension Parser.Iterator {
     func nextToken() -> Token? {
-        self.currentToken = lexer.next()
+        self.currentToken = iterator.next()
         return self.currentToken
     }
     
     /// expression
     ///   ::= primary binoprhs
-    ///
     private func ParseExpression() -> Expr? {
         guard let lhs = self.parsePrimary() else {
             return nil
@@ -143,31 +192,7 @@ extension Parser: IteratorProtocol {
         }
     }
     
-    /// primary
-    ///   ::= identifierexpr
-    ///   ::= numberexpr
-    ///   ::= parenexpr
-    public func next() -> Expr? {
-        switch self.nextToken() {
-        case .number:
-            return self.parseNumberExpr()
-        case .comment:
-            return self.next()
-        case .identifier:
-            return self.parseIdentifierExpr()
-        case .mark(let mark) where mark == .openParen:
-            return self.parseParenExpr()
-//        case .keyword:
-//            return nil
-//        case .mark:
-//            return nil
-//        case .operator:
-//            return nil
-        default:
-            print("unknown token when expecting an expression")
-            return nil
-        }
-    }
+    
     
     /// numberexpr ::= number
     private func parseNumberExpr() -> Expr? {
@@ -233,32 +258,4 @@ extension Parser: IteratorProtocol {
     }
     
     
-//    static std::unique_ptr<ExprAST> ParseIdentifierExpr() {
-//
-//      // Call.
-//      getNextToken();  // eat (
-//      std::vector<std::unique_ptr<ExprAST>> Args;
-//      if (CurTok != ')') {
-//        while (1) {
-//          if (auto Arg = ParseExpression())
-//            Args.push_back(std::move(Arg));
-//          else
-//            return nullptr;
-//
-//          if (CurTok == ')')
-//            break;
-//
-//          if (CurTok != ',')
-//            return LogError("Expected ')' or ',' in argument list");
-//          getNextToken();
-//        }
-//      }
-//
-//      // Eat the ')'.
-//      getNextToken();
-//
-//      return std::make_unique<CallExprAST>(IdName, std::move(Args));
-//    }
 }
-
-extension Parser: Sequence {}
