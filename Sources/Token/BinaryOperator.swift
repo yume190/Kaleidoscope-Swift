@@ -10,3 +10,9 @@ extension BinaryOperator: Tokenable {
         return .operator(self)
     }
 }
+
+extension BinaryOperator: CustomStringConvertible {
+    public var description: String {
+        return String(self.rawValue)
+    }
+}
