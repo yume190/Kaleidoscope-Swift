@@ -68,14 +68,3 @@ public class FunctionAST: ExprAST {
         self.body = body
     }
 }
-
-func abc() {
-    Collection
-}
-//indirect enum Expr {
-//    case number(Double)
-//    case variable(String)
-//    case binary(Expr, BinaryOperator, Expr)
-//    case ifelse(Expr, Expr, Expr)
-//    case call(String, [Expr])
-//}

@@ -1,22 +1,13 @@
-import Lexer
+import Token
 
-struct Prototype {
-    let name: String
-    let params: [String]
-}
+public class File {
+    public private(set) var externs = [Prototype]()
+    public private(set) var definitions = [Definition]()
+    public private(set) var expressions = [Expr]()
+    public private(set) var prototypeMap = [String: Prototype]()
 
-typealias Definition = Function
-struct Function {
-    let prototype: Prototype
-    let expr: Expr
-}
-
-class File {
-    private(set) var externs = [Prototype]()
-    private(set) var definitions = [Definition]()
-    private(set) var expressions = [Expr]()
-    private(set) var prototypeMap = [String: Prototype]()
-
+    public init() {}
+    
     func prototype(name: String) -> Prototype? {
         return prototypeMap[name]
     }
@@ -36,13 +27,3 @@ class File {
     }
 }
 
-indirect enum Expr {
-    case number(Double)
-    case variable(String)
-    case binary(Expr, BinaryOperator, Expr)
-    // github 多得
-    // case ifelse(Expr, Expr, Expr)
-    case call(String, [Expr])
-    case prototype(Prototype)
-    case function(Function)
-}
