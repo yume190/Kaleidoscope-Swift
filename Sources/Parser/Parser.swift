@@ -276,8 +276,8 @@ extension Parser.Iterator {
                 print("Expected ')' or ',' in argument list")
                 return nil
             }
-            
-            
+        
+            _ = self.nextToken() 
         }
         _ = self.nextToken() // eat )
         

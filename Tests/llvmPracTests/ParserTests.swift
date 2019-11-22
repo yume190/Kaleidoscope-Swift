@@ -120,8 +120,9 @@ final class ParserTests: XCTestCase {
     /// + -
     /// *
     func testOps() {}
+    
     /**
-        a < ((b + c) - (d * e))
+        (a < ((b + c) - (d * e)))
           <
          / \
         a   -
@@ -154,7 +155,7 @@ final class ParserTests: XCTestCase {
     }
     
     /**
-        a < ((b - c) + (d * e))
+        (a < ((b - c) + (d * e)))
           <
          / \
         a   +
