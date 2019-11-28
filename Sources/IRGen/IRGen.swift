@@ -126,10 +126,10 @@ enum Gen {
         init(name: String) {
             self.module = Module(name: name, context: self.context)
             self.builder = IRBuilder(module: self.module)
+            self.passPipeliner = PassPipeliner(module: module)
 
             /// L4 Optimizer Pass
             if isAddOptimizerPass {
-                self.passPipeliner = PassPipeliner(module: module)
                 self.passPipeliner.addStage("YumeOptimizeStatge") { builder in
                     builder.add(Pass.instructionCombining)
                     builder.add(Pass.reassociate)
