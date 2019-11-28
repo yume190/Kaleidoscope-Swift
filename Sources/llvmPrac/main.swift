@@ -19,5 +19,23 @@ fib(40)
 //print(Parser(input: code).parse().map{$0.description}.joined(separator: "\n"))
 //print(Parser(input: code).parse())
 
-Parser.init(input: "4+5").parse().forEach {$0.codeGen()?.dump()}
-Parser.init(input: "def foo(a b) a*a + 2*a*b + b*b;").parse().forEach {$0.codeGen()?.dump()}
+func dump(code: String) {
+  Parser(input: code).parse().forEach {$0.codeGen()?.dump()}
+}
+
+dump(code: "4+5")
+dump(code: "def foo(a b) a*a + 2*a*b + b*b;")
+
+/// Problem: (x + 3) * 2 
+/// Answer: tmp = x + 3, result = tmp*tmp;
+/// tips:
+///   * reassociation of expressions(to make the add’s lexically identical)
+//    * Common Subexpression Elimination (CSE)
+dump(code: "def test(x) (1+2+x)*(x+(1+2));")
+// define double @test(double %x) {
+// entry:
+//         %addtmp = fadd double 3.000000e+00, %x
+//         %addtmp1 = fadd double %x, 3.000000e+00
+//         %multmp = fmul double %addtmp, %addtmp1
+//         ret double %multmp
+// }
