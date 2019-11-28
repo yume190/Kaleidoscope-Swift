@@ -130,10 +130,12 @@ enum Gen {
             /// L4 Optimizer Pass
             if isAddOptimizerPass {
                 self.passPipeliner = PassPipeliner(module: module)
-                self.passPipeliner.add(Pass.instructionCombining)
-                self.passPipeliner.add(Pass.reassociate)
-                self.passPipeliner.add(Pass.gvn)
-                self.passPipeliner.add(Pass.cfgSimplification)
+                self.passPipeliner.addStage("YumeOptimizeStatge") { builder in
+                    builder.add(Pass.instructionCombining)
+                    builder.add(Pass.reassociate)
+                    builder.add(Pass.gvn)
+                    builder.add(Pass.cfgSimplification)
+                }
                 // TheFPM->doInitialization();
             }
         }
