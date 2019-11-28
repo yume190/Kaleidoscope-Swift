@@ -1,29 +1,51 @@
-# osx_image: xcode11.2 settings
-# https://docs.travis-ci.com/user/reference/osx#Xcode-version
-language: swift # or objective-c
-
-osx_image: xcode10.2
-git:
-  depth: 1
-  submodules: false
-branches:
-  only:
-    - master
-
-# cache
-# https://stackoverflow.com/questions/39930171/cache-brew-builds-with-travis-ci
-cache:
-  directories:
-    - $HOME/Library/Caches/Homebrew
-before_cache:
-  - brew cleanup
-
-before_install:
-  # - export PATH=/usr/local/opt/llvm/bin:"${PATH}"
-  - export PATH="/usr/local/opt/llvm@8/bin:$PATH"
-  - brew update
-  - brew install llvm@8
-  - git clone https://github.com/llvm-swift/LLVMSwift
-  - sudo swift LLVMSwift/utils/make-pkgconfig.swift
-  - swift run -Xlinker -w
-  - swift test -Xlinker -w
+env:
+  global:
+  - LC_CTYPE=en_US.UTF-8
+matrix:
+  include:
+  - os: osx
+    language: swift
+    osx_image: xcode10.2
+    before_install:
+    - export PATH="/usr/local/opt/llvm@8/bin:$PATH"
+    - brew update
+    - brew install llvm@8
+    - git clone https://github.com/llvm-swift/LLVMSwift
+    - sudo swift LLVMSwift/utils/make-pkgconfig.swift
+    script:
+    - swift test
+    - swift run
+    # cache
+    # https://stackoverflow.com/questions/39930171/cache-brew-builds-with-travis-ci
+    cache:
+      directories:
+        - $HOME/Library/Caches/Homebrew
+    before_cache:
+      - brew cleanup
+  - os: linux
+    language: generic
+    sudo: required
+    dist: trusty
+    env:
+    - LLVM_API_VERSION=8
+    before_install:
+    - export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:"${PKG_CONFIG_PATH}"
+    - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+    - sudo apt-add-repository "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-${LLVM_API_VERSION} main"
+    - sudo apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
+    - sudo apt-get update
+    - sudo apt-get install -y llvm-${LLVM_API_VERSION} libc++1
+    - sudo cp /usr/lib/x86_64-linux-gnu/libc++.so.1.0 /usr/lib/
+    - sudo ln -sf /usr/lib/libc++.so.1.0 /usr/lib/libc++.so
+    - sudo rm -rf /usr/local/clang-*/bin/llvm-config
+    - ls -l /usr/bin/llvm-config*
+    - sudo rm -f /usr/bin/llvm-config
+    - sudo ln -s /usr/bin/llvm-config-${LLVM_API_VERSION} /usr/bin/llvm-config
+    - wget -q -O - https://swift.org/keys/all-keys.asc | gpg --import -
+    - wget https://swift.org/builds/swift-5.0-release/ubuntu1404/swift-5.0-RELEASE/swift-5.0-RELEASE-ubuntu14.04.tar.gz
+    - tar xzf swift-5.0-RELEASE-ubuntu14.04.tar.gz
+    - export PATH=${PWD}/swift-5.0-RELEASE-ubuntu14.04/usr/bin:"${PATH}"
+    - sudo ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift utils/make-pkgconfig.swift
+    script:
+    - ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift run
+    - ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift test
