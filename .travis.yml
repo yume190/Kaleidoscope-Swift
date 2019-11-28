@@ -45,7 +45,8 @@ matrix:
     - wget https://swift.org/builds/swift-5.0-release/ubuntu1404/swift-5.0-RELEASE/swift-5.0-RELEASE-ubuntu14.04.tar.gz
     - tar xzf swift-5.0-RELEASE-ubuntu14.04.tar.gz
     - export PATH=${PWD}/swift-5.0-RELEASE-ubuntu14.04/usr/bin:"${PATH}"
-    - sudo ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift utils/make-pkgconfig.swift
+    - git clone https://github.com/llvm-swift/LLVMSwift
+    - sudo ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift LLVMSwift/utils/make-pkgconfig.swift
     script:
     - ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift run
     - ./swift-5.0-RELEASE-ubuntu14.04/usr/bin/swift test
