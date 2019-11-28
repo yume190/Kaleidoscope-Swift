@@ -113,7 +113,7 @@ public typealias Value = IRValue
 var namedValues: [String:Value] = [:]
 
 public enum Gen {
-    static let main: IR = IR(name: "name")
+    public static let main: IR = IR(name: "name")
 
     public class IR {
         let context = Context()
