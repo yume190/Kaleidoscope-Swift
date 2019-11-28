@@ -91,6 +91,12 @@ public extension Expr {
                 
                 // Validate the generated code, checking for consistency.
 //                verifyFunction(*TheFunction);
+
+                /// L4 JIT
+                // // Optimize the function.
+                // TheFPM->run(*TheFunction);
+                Gen.main.passPipeliner.execute()
+
                 return function
             }
             
@@ -106,6 +112,7 @@ public extension Expr {
 public typealias Value = IRValue
 var namedValues: [String:Value] = [:]
 
+public var isAddOptimizerPass: Bool = false
 enum Gen {
     static let main: IR = IR(name: "name")
 
@@ -113,10 +120,22 @@ enum Gen {
         let context = Context()
         let module: Module
         let builder: IRBuilder
+        /// L4 Optimizer Pass
+        let passPipeliner: PassPipeliner
     
         init(name: String) {
             self.module = Module(name: name, context: self.context)
             self.builder = IRBuilder(module: self.module)
+
+            /// L4 Optimizer Pass
+            if isAddOptimizerPass {
+                self.passPipeliner = PassPipeliner(module: module)
+                self.passPipeliner.add(Pass.instructionCombining)
+                self.passPipeliner.add(Pass.reassociate)
+                self.passPipeliner.add(Pass.gvn)
+                self.passPipeliner.add(Pass.cfgSimplification)
+                // TheFPM->doInitialization();
+            }
         }
     }
 }
