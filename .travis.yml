@@ -25,5 +25,5 @@ before_install:
   - brew install llvm@8
   - git clone https://github.com/llvm-swift/LLVMSwift
   - sudo swift LLVMSwift/utils/make-pkgconfig.swift
-  - swift run
-  - swift test
+  - swift run -Xlinker -w
+  - swift test -Xlinker -w
