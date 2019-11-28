@@ -40,8 +40,8 @@ dump(code: "def test(x) (1+2+x)*(x+(1+2));")
 //         ret double %multmp
 // }
 
-isAddOptimizerPass = true
-dump(code: "def test(x) (1+2+x)*(x+(1+2));")
+Gen.main.activeOptimizerPass()
+dump(code: "def test2(x) (1+2+x)*(x+(1+2));")
 // define double @test(double %x) {
 // entry:
 //         %addtmp = fadd double %x, 3.000000e+00

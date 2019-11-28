@@ -112,8 +112,7 @@ public extension Expr {
 public typealias Value = IRValue
 var namedValues: [String:Value] = [:]
 
-public var isAddOptimizerPass: Bool = false
-enum Gen {
+public enum Gen {
     static let main: IR = IR(name: "name")
 
     public class IR {
@@ -127,17 +126,17 @@ enum Gen {
             self.module = Module(name: name, context: self.context)
             self.builder = IRBuilder(module: self.module)
             self.passPipeliner = PassPipeliner(module: module)
+        }
 
-            /// L4 Optimizer Pass
-            if isAddOptimizerPass {
-                self.passPipeliner.addStage("YumeOptimizeStatge") { builder in
-                    builder.add(Pass.instructionCombining)
-                    builder.add(Pass.reassociate)
-                    builder.add(Pass.gvn)
-                    builder.add(Pass.cfgSimplification)
-                }
-                // TheFPM->doInitialization();
+        /// L4 Optimizer Pass
+        public func activeOptimizerPass() {
+            self.passPipeliner.addStage("YumeOptimizeStatge") { builder in
+                builder.add(Pass.instructionCombining)
+                builder.add(Pass.reassociate)
+                builder.add(Pass.gvn)
+                builder.add(Pass.cfgSimplification)
             }
+            // TheFPM->doInitialization();
         }
     }
 }
