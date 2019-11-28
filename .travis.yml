@@ -19,7 +19,8 @@ before_cache:
   - brew cleanup
 
 before_install:
-  - export PATH=/usr/local/opt/llvm/bin:"${PATH}"
+  # - export PATH=/usr/local/opt/llvm/bin:"${PATH}"
+  - export PATH="/usr/local/opt/llvm@8/bin:$PATH"
   - brew update
   - brew install llvm@8
   - git clone https://github.com/llvm-swift/LLVMSwift
