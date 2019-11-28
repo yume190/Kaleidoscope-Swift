@@ -1,9 +1,7 @@
 # osx_image: xcode11.2 settings
 # https://docs.travis-ci.com/user/reference/osx#Xcode-version
 language: swift # or objective-c
-# xcode_project: JSONDecodeKit.xcodeproj # path to your xcodeproj folder
-# xcode_scheme: JSONDecodeKit
-# podfile: pod # Disable `pod install`
+
 osx_image: xcode10.2
 git:
   depth: 1
@@ -23,18 +21,8 @@ before_cache:
 before_install:
   - export PATH=/usr/local/opt/llvm/bin:"${PATH}"
   - brew update
-  - brew install llvm
+  - brew install llvm@8
   - git clone https://github.com/llvm-swift/LLVMSwift
   - sudo swift LLVMSwift/utils/make-pkgconfig.swift
+  - swift run
   - swift test
-
-# script:
-#   - set -o pipefail
-#   - brew install llvm@8
-#   - export PATH=$PATH
-#   - git clone https://github.com/llvm-swift/LLVMSwift
-#   - swift LLVMSwift/utils/make-pkgconfig.swift
-#   - swift test
-#clean test
-# after_success:
-#   - bash <(curl -s https://codecov.io/bash)
