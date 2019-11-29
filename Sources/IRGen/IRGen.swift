@@ -140,3 +140,5 @@ public enum Gen {
         }
     }
 }
+
+https://stackoverflow.com/questions/52335435/how-can-i-tell-when-a-filehandle-has-nothing-left-to-be-read
