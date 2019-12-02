@@ -1,6 +1,6 @@
 # Kaleidoscope-Swift
 
-A description of this package.
+[![Build Status](https://travis-ci.org/yume190/Kaleidoscope-Swift.svg?branch=master)](https://travis-ci.org/yume190/Kaleidoscope-Swift)
 
 [My First Language Frontend with LLVM Tutorial](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html)
 
