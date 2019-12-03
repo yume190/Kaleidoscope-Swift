@@ -3,6 +3,7 @@ import AST
 import Parser
 import IRGen
 import LLVM
+import Foundation
 
 let code = """
 def fib(x)
@@ -20,7 +21,12 @@ fib(40)
 //print(Parser(input: code).parse())
 
 func dump(code: String) {
-  Parser(input: code).parse().forEach {$0.codeGen()?.dump()}
+    Parser(input: code)
+        .parse()
+        .forEach { (expr) in
+            let gened = expr.codeGen()?.pipe() ?? ""
+            print("gened: \(gened)")
+        }
 }
 
 dump(code: "4+5")
@@ -48,3 +54,7 @@ dump(code: "def test2(x) (1+2+x)*(x+(1+2));")
 //         %multmp = fmul double %addtmp, %addtmp
 //         ret double %multmp
 // }
+
+
+
+RunLoop.main.run()
