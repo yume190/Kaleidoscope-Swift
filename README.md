@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/yume190/Kaleidoscope-Swift.svg?branch=master)](https://travis-ci.org/yume190/Kaleidoscope-Swift)
 
 [My First Language Frontend with LLVM Tutorial](https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html)
+[qyz777/Kaleidoscope](https://github.com/qyz777/Kaleidoscope)
 
 ``` sh
 brew install llvm

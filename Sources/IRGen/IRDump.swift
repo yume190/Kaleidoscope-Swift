@@ -18,13 +18,13 @@ extension IRValue {
     public func pipe() -> String {
         let group = DispatchGroup()
         var tempData = Data()
-        let pipe = Pipe()
+        let _pipe = Pipe()
 
 //        setvbuf(stderr, nil, _IONBF, 0)
-        dup2(pipe.fileHandleForWriting.fileDescriptor, STDERR_FILENO)
+        dup2(_pipe.fileHandleForWriting.fileDescriptor, STDERR_FILENO)
 
         group.enter()
-        pipe.fileHandleForReading.readabilityHandler = { stdErrFileHandle in
+        _pipe.fileHandleForReading.readabilityHandler = { stdErrFileHandle in
             let stdErrPartialData = stdErrFileHandle.availableData
 
             tempData.append(stdErrPartialData)
@@ -37,7 +37,7 @@ extension IRValue {
         self.dump()
 
         _ = group.wait(timeout: .now() + DispatchTimeInterval.seconds(1))
-//        print("waited")
+        
         return String(data: tempData, encoding: .utf8) ?? ""
     }
 }
