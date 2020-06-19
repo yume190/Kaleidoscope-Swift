@@ -23,6 +23,8 @@ public indirect enum Expr: Equatable {
     case prototype(String, [String])
     /// name params expr
     case function(String, [String], Expr)
+    /// name start end step body
+    case `for`(String, Expr, Expr, Expr?, Expr)
 }
 
 extension Expr: CustomStringConvertible {
@@ -53,6 +55,12 @@ extension Expr: CustomStringConvertible {
             func \(name)(\(args.map{$0.description}.joined(separator: " "))) {
             \(expr)
             }
+            """
+        case let .for(name, start, end, step, body):
+            let _step = step.map {", \($0)"} ?? ""
+            return """
+            for \(name) = \(start) , \(end)\(_step) in
+                \(body)
             """
         }
     }

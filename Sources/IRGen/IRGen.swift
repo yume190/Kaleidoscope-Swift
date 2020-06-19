@@ -26,8 +26,9 @@ public extension Expr {
             case .times:
                 return builder.buildMul(l, r, name: "multmp")
             case .less:
-                let aa = builder.buildFCmp(l, r, .orderedLessThan, name: "cmptmp")
+                let aa = builder.buildFCmp(l, r, .unorderedLessThan, name: "cmptmp")
                 return builder.buildIntToFP(aa, type: FloatType.double, signed: false, name: "booltmp")
+//                return builder.buildFCmp(l, r, .orderedLessThan, name: "boolCmp")
 //                case '<':
 //                  L = Builder.CreateFCmpULT(L, R, "cmptmp");
 //                  // Convert bool 0/1 to double 0.0 or 1.0
@@ -135,6 +136,49 @@ public extension Expr {
             ])
             
             return pn
+            
+        case let .for(name, start, end, step, body):
+            guard let startV = start.codeGen() else { return nil }
+            
+            guard let theFunction = builder.insertBlock?.parent else {return nil}
+            let preheaderBB = builder.insertBlock
+            let loopBB = theFunction.appendBasicBlock(named: "loop", in: context)
+            builder.buildBr(loopBB)
+            
+            builder.positionAtEnd(of: loopBB)
+            let variable = builder.buildPhi(FloatType.double, name: name)
+            variable.addIncoming([(startV, preheaderBB!)])
+            
+            let oldValue = namedValues[name]
+            namedValues[name] = variable
+
+            guard let _ = body.codeGen() else { return nil }
+            var stepV: IRValue?
+            if let _step = step {
+                stepV = _step.codeGen()
+                if stepV == nil {return nil}
+            } else {
+                /// APFloat(1.0)
+                stepV = FloatType.double.constant(1)
+            }
+            
+            let nextVar = builder.buildAdd(variable, stepV!, name: "nextvar")
+            
+            guard let endV = end.codeGen() else { return nil }
+            
+            let endV2 = builder.buildFCmp(endV, FloatType.double.constant(0), .orderedNotEqual, name: "loopcond")
+            
+            let loopEndBB = builder.insertBlock
+            let afterBB = theFunction.appendBasicBlock(named: "afterloop", in: context)
+            builder.buildCondBr(condition: endV2, then: loopBB, else: afterBB)
+            builder.positionAtEnd(of: afterBB)
+            variable.addIncoming([(nextVar, loopEndBB!)])
+            if let oldValue = oldValue {
+                namedValues[name] = oldValue
+            } else {
+                namedValues.removeValue(forKey: name)
+            }
+            return FloatType.double.constant(0)
         }
     }
 }

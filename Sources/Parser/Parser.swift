@@ -200,7 +200,9 @@ extension Parser.Iterator {
         case .number:
             return self.parseNumberExpr()
         case .comment:
-            return self.next()
+            _ = nextToken() // eat comment
+            return self.parseExpression()
+//            return self.next()
         case .identifier:
             return self.parseIdentifierExpr()
         case .mark(let mark) where mark == .openParen:
@@ -208,6 +210,9 @@ extension Parser.Iterator {
         /// L5
         case .keyword(let kw) where kw == .if:
             return self.parseIfExpr()
+        /// L5
+        case .keyword(let kw) where kw == .for:
+            return self.parseForExpr()
         default:
             print("unknown token when expecting an expression")
             return nil
@@ -313,6 +318,48 @@ extension Parser.Iterator {
         guard let `else` = self.parseExpression() else { return nil }
         
         return .if(cond, then, `else`)
+    }
+    
+    private final func parseForExpr() -> Expr? {
+        _ = self.nextToken() // eat for
+        
+        guard case let .identifier(name) = currentToken else {
+            print("expected identifier after for")
+            return nil
+        }
+        _ = self.nextToken() // eat identifier
+        
+        guard currentToken == Token.operator(.equals) else {
+            print("expected '=' after for")
+            return nil
+        }
+        _ = self.nextToken() // eat =
+        
+        guard let start = self.parseExpression() else {return nil}
+        guard currentToken == Token.mark(.comma) else {
+            print("expected ',' after for start value")
+            return nil
+        }
+        _ = self.nextToken() // eat expr
+        
+        guard let end = self.parseExpression() else {return nil}
+        
+        var step: Expr?
+        if currentToken == Token.mark(.comma) {
+            _ = self.nextToken() // eat
+            step = parseExpression()
+            if step == nil {return nil}
+        }
+        
+        guard Token.keyword(Keyword.in) == currentToken else {
+            print("expected 'in' after for")
+            return nil
+        }
+        _ = self.nextToken() // eat in
+        
+        guard let body = self.parseExpression() else {return nil}
+        
+        return .for(name, start, end, step, body)
     }
 }
 

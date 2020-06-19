@@ -6,6 +6,9 @@ public enum Keyword: String {
     case `if`
     case then
     case `else`
+    
+    case `for`
+    case `in`
 }
 
 extension Keyword: Tokenable {
