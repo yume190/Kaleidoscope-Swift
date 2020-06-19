@@ -198,7 +198,8 @@ final class ParserTests: XCTestCase {
         fib(40)
         """
 
-//        let tokens = Parser(
+        let exprs = Parser(input: code).parse()
+        print(exprs)
 //        XCTAssertEqual(tokens.count, 29)
 //        XCTAssertEqual(tokens[0], Token.keyword(.def))
 //        XCTAssertEqual(tokens[28], Token.mark(.closeParen))
@@ -210,14 +211,5 @@ final class ParserTests: XCTestCase {
         let tokens = Lexer(input: code).lex()
         XCTAssertEqual(tokens.count, 1)
         XCTAssertEqual(tokens[0], Token.comment("# Compute the x'th fibonacci number."))
-//
-//        XCTAssertEqual failed: (
-//        "comment("# Compute the x\'th fibonacci number.")") is not equal to (
-//        "comment(" Compute the x\'th fibonacci number.")")
     }
-
-//    static var allTests = [
-//        ("testFullCode1", testFullCode1),
-//        ("testComment", testComment)
-//    ]
 }

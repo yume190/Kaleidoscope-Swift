@@ -27,10 +27,10 @@ let package = Package(
             name: "Token"),
         .target(
             name: "Lexer",
-            dependencies: ["Token", "AST"]),
+            dependencies: ["Token"]),
         .target(
             name: "AST",
-            dependencies: ["Token"]),
+            dependencies: ["Token", "LLVM"]),
         .target(
             name: "Parser",
             dependencies: ["AST", "Lexer", "Token"]),

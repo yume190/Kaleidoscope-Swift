@@ -1,14 +1,16 @@
 import LLVM
 import AST
 
+fileprivate var namedValues: [String:IRValue] = [:]
+
 public extension Expr {
-    func codeGen() -> Value? {
+    func codeGen() -> IRValue? {
         switch self {
         case .number(let num):
             return FloatType.double.constant(num)
         case .variable(let variable):
             guard let v = namedValues[variable] else {
-//                LogErrorV("Unknown variable name");
+                printE("Unknown variable name")
                 return nil
             }
             return v
@@ -18,33 +20,32 @@ public extension Expr {
             
             switch op {
             case .plus:
-                return Gen.main.builder.buildAdd(l, r, name: "addtmp")
+                return builder.buildAdd(l, r, name: "addtmp")
             case .minus:
-                return Gen.main.builder.buildSub(l, r, name: "subtmp")
+                return builder.buildSub(l, r, name: "subtmp")
             case .times:
-                return Gen.main.builder.buildMul(l, r, name: "multmp")
+                return builder.buildMul(l, r, name: "multmp")
             case .less:
-                let aa = Gen.main.builder.buildFCmp(l, r, .orderedLessThan, name: "cmptmp")
-                return Gen.main.builder.buildIntToFP(aa, type: FloatType.double, signed: false, name: "booltmp")
+                let aa = builder.buildFCmp(l, r, .orderedLessThan, name: "cmptmp")
+                return builder.buildIntToFP(aa, type: FloatType.double, signed: false, name: "booltmp")
 //                case '<':
 //                  L = Builder.CreateFCmpULT(L, R, "cmptmp");
 //                  // Convert bool 0/1 to double 0.0 or 1.0
 //                  return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),
 //                                              "booltmp");
             default:
+                printE("invalid binary operator")
                 return nil
-//                  return LogErrorV("invalid binary operator");
             }
         case let .call(name, args):
             
-            guard let f: Function = Gen.main.module.function(named: name) else {
-//                return LogErrorV("Unknown function referenced");
+            guard let f: Function = module.function(named: name) else {
+                printE("Unknown function referenced")
                 return nil
             }
             
-//            if (CalleeF->arg_size() != Args.size())
             guard f.parameters.count == args.count else {
-//                return LogErrorV("Incorrect # arguments passed");
+                printE("Incorrect # arguments passed")
                 return nil
             }
                 
@@ -56,15 +57,12 @@ public extension Expr {
                 _args.append(genedCode)
             }
               
-            return Gen.main.builder.buildCall(f, args: _args)
-        case let .prototype(name, params):            
-//            if let function = Gen.main.module.function(named: name) {
-//                return function
-//            }
+            return builder.buildCall(f, args: _args, name: "calltmp")
+        case let .prototype(name, params):
             let argTypes = [IRType](repeating: FloatType.double,
                                     count: params.count)
             let funcType = FunctionType(argTypes, FloatType.double)
-            let function = Gen.main.builder.addFunction(name, type: funcType)
+            let function = builder.addFunction(name, type: funcType)
 
             for (var param, name) in zip(function.parameters, params) {
                 param.name = name
@@ -72,14 +70,10 @@ public extension Expr {
 
             return function
         case let .function(name, params, expr):
-            guard let function: Function = Gen.main.module.function(named: name) ?? Expr.prototype(name, params).codeGen() as? Function else {return nil}
+            guard let function: Function = module.function(named: name) ?? Expr.prototype(name, params).codeGen() as? Function else {return nil}
             
-            
-//            Gen.main.builder.buildBr(BasicBlock.)
-//            let bb = Gen.main.builder.buildBr(BasicBlock.init(context: Gen.main.context, name: "entry"))
-//            Gen.main.builder.insert(bb)
             let entryBlock = function.appendBasicBlock(named: "entry")
-            Gen.main.builder.positionAtEnd(of: entryBlock)
+            builder.positionAtEnd(of: entryBlock)
             
             namedValues.removeAll()
             for arg in function.parameters {
@@ -87,15 +81,15 @@ public extension Expr {
             }
             
             if let retValue = expr.codeGen() {
-                Gen.main.builder.buildRet(retValue)
+                builder.buildRet(retValue)
                 
                 // Validate the generated code, checking for consistency.
 //                verifyFunction(*TheFunction);
 
                 /// L4 JIT
-                // // Optimize the function.
+                // Optimize the function.
                 // TheFPM->run(*TheFunction);
-                Gen.main.passPipeliner.execute()
+                passPipeliner.execute()
 
                 return function
             }
@@ -103,41 +97,44 @@ public extension Expr {
             // Error reading body, remove function.
             function.eraseFromParent()
             return nil
-        default:
-            return nil
+        case let .if(cond, then, `else`):
+            guard let condV = cond.codeGen() else { return nil }
+            
+            let condV2 = builder.buildFCmp(condV, FloatType.double.constant(0), .orderedNotEqual, name: "ifcond")
+            guard let theFunction = builder.insertBlock?.parent else {return nil}
+            
+            let thenBB = theFunction.appendBasicBlock(named: "then", in: context)
+            let elseBB = BasicBlock(context: context, name: "else")
+            let mergeBB = BasicBlock(context: context, name: "ifcont")
+            builder.buildCondBr(condition: condV2, then: thenBB, else: elseBB)
+            
+            // Emit then value.
+            builder.positionAtEnd(of: thenBB)
+            guard let thenV = then.codeGen() else {return nil}
+            builder.buildBr(mergeBB)
+            // Codegen of 'Then' can change the current block, update ThenBB for the PHI.
+            let thenBB2 = builder.insertBlock
+            
+            // Emit else block.
+            theFunction.append(elseBB)
+            builder.positionAtEnd(of: elseBB)
+            guard let elseV = `else`.codeGen() else {return nil}
+            builder.buildBr(mergeBB)
+            // Codegen of 'Else' can change the current block, update ElseBB for the PHI.
+            let elseBB2 = builder.insertBlock
+            
+            // Emit merge block.
+            theFunction.append(mergeBB)
+            builder.positionAtEnd(of: mergeBB)
+//            PHINode *PN = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, "iftmp");
+            let pn = builder.buildPhi(FloatType.double, name: "iftmp")
+            
+            pn.addIncoming([
+                (thenV, thenBB2!),
+                (elseV, elseBB2!)
+            ])
+            
+            return pn
         }
     }
 }
-
-public typealias Value = IRValue
-var namedValues: [String:Value] = [:]
-
-public enum Gen {
-    public static let main: IR = IR(name: "name")
-
-    public class IR {
-        let context = Context()
-        let module: Module
-        let builder: IRBuilder
-        /// L4 Optimizer Pass
-        let passPipeliner: PassPipeliner
-    
-        init(name: String) {
-            self.module = Module(name: name, context: self.context)
-            self.builder = IRBuilder(module: self.module)
-            self.passPipeliner = PassPipeliner(module: module)
-        }
-
-        /// L4 Optimizer Pass
-        public func activeOptimizerPass() {
-            self.passPipeliner.addStage("YumeOptimizeStatge") { builder in
-                builder.add(Pass.instructionCombining)
-                builder.add(Pass.reassociate)
-                builder.add(Pass.gvn)
-                builder.add(Pass.cfgSimplification)
-            }
-            // TheFPM->doInitialization();
-        }
-    }
-}
-

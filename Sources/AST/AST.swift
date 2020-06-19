@@ -8,17 +8,6 @@
 import Foundation
 import Token
 
-//public struct Prototype {
-//    let name: String
-//    let params: [String]
-//}
-//
-//public typealias Definition = Function
-//public struct Function {
-//    let prototype: Prototype
-//    let expr: Expr
-//}
-
 public indirect enum Expr: Equatable {
     case number(Double)
     case variable(String)

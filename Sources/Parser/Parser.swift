@@ -248,14 +248,17 @@ extension Parser.Iterator {
             return nil
         }
         
-        /// eat identifier.
-        _ = self.nextToken()
+        
+        _ = self.nextToken() /// eat identifier.
         guard self.currentToken == .mark(.openParen) else {
             return .variable(id)
         }
         
-        _ = self.nextToken()
+        _ = self.nextToken() /// eat '('
         guard self.currentToken != .mark(.closeParen) else {
+            defer {
+                _ = self.nextToken() /// eat ')'
+            }
             return .call(id, [])
         }
         
@@ -279,7 +282,7 @@ extension Parser.Iterator {
         
             _ = self.nextToken() 
         }
-        _ = self.nextToken() // eat )
+        _ = self.nextToken() /// eat ')'
         
         return .call(id, exprs)
     }
