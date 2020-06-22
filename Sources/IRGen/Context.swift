@@ -7,10 +7,10 @@
 
 import LLVM
 
-let context = Context()
-let module = Module(name: "name", context: context)
-let builder: IRBuilder = .init(module: module)
-let passPipeliner: PassPipeliner = .init(module: module)
+public let context = Context()
+public let module = Module(name: "name", context: context)
+public let builder: IRBuilder = .init(module: module)
+public let passPipeliner: PassPipeliner = .init(module: module)
 /// L4 Optimizer Pass
 public func activeOptimizerPass() {
     passPipeliner.addStage("YumeOptimizeStatge") { builder in
