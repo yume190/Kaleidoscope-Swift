@@ -4,25 +4,31 @@
 import PackageDescription
 
 let package = Package(
-    name: "Kaleidoscope-Swift",
+    name: "Kaleidoscope",
     platforms: [
         .macOS(.v10_14),
+    ],
+    products: [
+        .executable(name: "kaleidoscope", targets: ["Kaleidoscope"])
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
-        .package(url: "https://github.com/yume190/LLVMSwift.git", from: "0.6.0")
+        .package(url: "https://github.com/yume190/LLVMSwift.git", from: "0.6.0"),
         // .package(url: "https://github.com/llvm-swift/LLVMSwift.git", from: "0.6.0")
+
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "0.2.0")
+        
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
-            name: "llvmPrac",
-            dependencies: ["Lexer", "AST", "Parser", "IRGen"]),
+            name: "Kaleidoscope",
+            dependencies: ["Lexer", "AST", "Parser", "IRGen", "ArgumentParser"]),
         .target(
             name: "IRGen",
-            dependencies: ["Token", "Lexer", "AST", "Parser", "LLVM"]),
+            dependencies: ["AST", "LLVM"]),
         .target(
             name: "Token"),
         .target(
@@ -30,12 +36,12 @@ let package = Package(
             dependencies: ["Token"]),
         .target(
             name: "AST",
-            dependencies: ["Token", "LLVM"]),
+            dependencies: ["Token"]),
         .target(
             name: "Parser",
             dependencies: ["AST", "Lexer", "Token"]),
         .testTarget(
-            name: "llvmPracTests",
-            dependencies: ["llvmPrac", "Lexer", "AST", "Parser", "IRGen"]),
+            name: "KaleidoscopeTests",
+            dependencies: ["Kaleidoscope", "Lexer", "AST", "Parser", "IRGen"]),
     ]
 )
