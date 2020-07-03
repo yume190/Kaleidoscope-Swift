@@ -1,3 +1,6 @@
-def average(x y) (x + y + 3) * 3;
+extern add(x y);
+
+def average(x y) 
+    add(x, y) * 2;
 
 average(10, 20);

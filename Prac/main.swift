@@ -2,4 +2,9 @@
 @_silgen_name("average")
 func average(_ a: Double, _ b: Double) -> Double
 
-print(average(11, 22))
+@_silgen_name("add")
+func add(_ a: Double, _ b: Double) -> Double {
+    a + b + 1
+}
+
+print(average(10, 20))
