@@ -4,6 +4,7 @@ public enum BinaryOperator: Character {
          mod = "%", equals = "=",
          less = "<", great = ">"
 }
+public typealias Precedence = Int
 
 extension BinaryOperator: Tokenable {
     public var token: Token {

@@ -6,9 +6,37 @@ public enum Token {
     case identifier(String)
     case number(Double)
     case comment(String)
+    
+    case other(Character)
 }
 
 extension Token: Equatable {}
+
+//public extension Token {
+//    var string: String {
+//        switch self {
+//        case let .keyword(keyword): return keyword.rawValue
+//        case let .operator(op): return String(op.rawValue)
+//        case let .mark(mark): return String(mark.rawValue)
+//        case let .identifier(id): return id
+//        case let .number(num): return "\(num)"
+//        case let .comment(comment): return comment
+//        case let .other(char): return String(char)
+//        }
+//    }
+//    
+//    var char: Character? {
+//        switch self {
+//        case let .keyword(keyword): return keyword.rawValue.first
+//        case let .operator(op): return op.rawValue
+//        case let .mark(mark): return mark.rawValue
+//        case let .identifier(id): return id.first
+//        case let .number(num): return "\(num)".first
+//        case let .comment(comment): return comment.first
+//        case let .other(char): return char
+//        }
+//    }
+//}
 
 extension Token: CustomStringConvertible {
     public var description: String {
@@ -25,6 +53,8 @@ extension Token: CustomStringConvertible {
             return "number: \(num)"
         case .comment(let c):
             return "comment: \(c)"
+        case let .other(char):
+            return String(char)
         }
     }
 }

@@ -44,7 +44,8 @@ extension Lexer {
             return
                 self._charToken(char) ??
                 self._identifierToken(char) ??
-                self._commentToken(char)
+                self._commentToken(char) ??
+                self._otherToken(char)
         }
     }
 }
@@ -108,6 +109,16 @@ extension Lexer.Iterator {
             }
             return .comment(text)
         }
+        return nil
+    }
+    
+    @inline(__always)
+    private func _otherToken(_ char: Character) -> Token? {
+        if char.isASCII {
+            defer{ advance() }
+            return .other(char)
+        }
+        
         return nil
     }
 }

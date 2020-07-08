@@ -40,7 +40,7 @@ extension Parser {
         private let lexer: Lexer
         private let iterator : Lexer.Iterator
         private var currentToken: Token? = nil
-        private let binopPrecedence: [BinaryOperator: Int] = [
+        private let binopPrecedence: [BinaryOperator: Precedence] = [
             .less: 10,
             .plus: 20,
             .minus: 20,
@@ -134,13 +134,53 @@ extension Parser.Iterator {
     
     /// prototype
     ///   ::= id '(' id* ')'
+    ///   Lesson 6
+    ///   ::= binary LETTER number? (id, id)
+    ///   ::= unary LETTER (id)
     private final func parsePrototype() -> Expr? {
-        guard case let .identifier(fnName) = self.currentToken else {
+        enum Prototype {
+            case proto(_ id: String)
+            case unary(_ id: String) // pred 30
+            case binary(_ id: String, _ pred: Precedence)
+        }
+
+        let prototype: Prototype
+        
+        switch self.currentToken {
+        case let .identifier(fnName):
+            prototype = .proto(fnName)
+            _ = nextToken()
+            
+        case .keyword(.unary):
+            _ = nextToken()
+            guard case let .other(char) = currentToken else { print("Expected binary operator");return nil}
+            guard char.isASCII else { print("Expected unary operator");return nil}
+            var id = "unary"
+            id.append(char)
+            prototype = .unary(id)
+            _ = nextToken()
+        case .keyword(.binary):
+            _ = nextToken()
+            guard case let .other(char) = currentToken else { print("Expected binary operator");return nil}
+            guard char.isASCII else { print("Expected unary operator");return nil}
+            var id = "binary"
+            id.append(char)
+            _ = nextToken() // eat op
+            
+            if case let .number(num) = self.currentToken {
+                guard 1 <= num && num <= 100 else {
+                    print("Invalid precedence: must be 1..100")
+                    return nil
+                }
+                prototype = .binary(id, Precedence(num))
+                _ = nextToken()
+                break
+            }
+            prototype = .binary(id, 30)
+        default:
             print("Expected function name in prototype")
             return nil
         }
-        
-        _ = self.nextToken()
         
         if currentToken != .mark(.openParen) {
             print("Expected '(' in prototype")
@@ -159,21 +199,36 @@ extension Parser.Iterator {
         
         _ = self.nextToken() // eat ')'
         
-        return .prototype(fnName, argNames)
+        switch prototype {
+        case .proto(let fnName):
+            return .prototype(.init(fnName, argNames, .function, 30))
+        case .unary(let op):
+            guard argNames.count == 1 else {
+                print("Invalid number of operands for operator")
+                return nil
+            }
+            return .prototype(.init(op, argNames, .unary, 30))
+        case let .binary(op, pred):
+            guard argNames.count == 2 else {
+                print("Invalid number of operands for operator")
+                return nil
+            }
+            return .prototype(.init(op, argNames, .binary, pred))
+        }
     }
     
     /// definition ::= 'def' prototype expression
     private final func parseDefinition() -> Expr? {
         _ = self.nextToken() // eat def.
         
-        guard case let .prototype(name, args) = self.parsePrototype() else {
+        guard case let .prototype(proto) = self.parsePrototype() else {
             return nil
         }
         
         guard let e = self.parseExpression() else {
             return nil
         }
-        return .function(name, args, e)
+        return .function(proto, e)
     }
     
     /// external ::= 'extern' prototype
@@ -188,7 +243,7 @@ extension Parser.Iterator {
             return nil
         }
         
-        return .function("", [], e)
+        return .function(.init("", [], .function, 30), e)
     }
     
     /// primary

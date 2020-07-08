@@ -9,6 +9,9 @@ public enum Keyword: String {
     
     case `for`
     case `in`
+    
+    case binary
+    case unary
 }
 
 extension Keyword: Tokenable {

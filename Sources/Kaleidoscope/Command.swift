@@ -21,7 +21,6 @@ struct Command: ParsableCommand {
     var output: String = "output.o"
     
     func run() throws {
-        print(file, output)
         let code = try String(contentsOfFile: self.file)
         Parser(input: code).forEach { (expr) in
             expr.codeGen()?.dump()

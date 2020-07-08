@@ -13,6 +13,7 @@ import class Foundation.Bundle
 @testable import Parser
 
 final class ParserTests: XCTestCase {
+    private static let emptyTopFunction = Prototype("", [], .function, 30)
     
     func testNumber() throws {
         let code = "3"
@@ -20,7 +21,10 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.function("", [], .number(3))
+            Expr.function(
+                Self.emptyTopFunction,
+                .number(3)
+            )
         )
     }
     func testId1() throws {
@@ -29,7 +33,10 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.function("", [], Expr.variable("fib"))
+            Expr.function(
+                Self.emptyTopFunction,
+                Expr.variable("fib")
+            )
         )
     }
     
@@ -39,7 +46,10 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.function("", [], Expr.call("fib", []))
+            Expr.function(
+                Self.emptyTopFunction,
+                Expr.call("fib", [])
+            )
         )
     }
     
@@ -49,7 +59,10 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.function("", [], Expr.call("fib", [.variable("a")]))
+            Expr.function(
+                Self.emptyTopFunction,
+                Expr.call("fib", [.variable("a")])
+            )
         )
     }
     
@@ -59,7 +72,10 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.function("", [], Expr.call("fib", [.variable("a"), .variable("b")]))
+            Expr.function(
+                Self.emptyTopFunction,
+                Expr.call("fib", [.variable("a"), .variable("b")])
+            )
         )
     }
     
@@ -69,7 +85,9 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.prototype("printd", [])
+            Expr.prototype(
+                .init("printd", [], .function, 30)
+            )
         )
     }
     
@@ -79,7 +97,9 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.prototype("printd", ["x"])
+            Expr.prototype(
+                .init("printd", ["x"], .function, 30)
+            )
         )
     }
     
@@ -89,7 +109,9 @@ final class ParserTests: XCTestCase {
         
         XCTAssertEqual(
             exprs[0],
-            Expr.prototype("printd", ["x", "y"])
+            Expr.prototype(
+                .init("printd", ["x", "y"], .function, 30)
+            )
         )
     }
     
@@ -105,8 +127,7 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(
             exprs[0],
             Expr.function(
-                "",
-                [],
+                Self.emptyTopFunction,
                 .if(
                     .binary(.variable("x"), .less, .number(3)),
                     .number(1),
@@ -138,8 +159,7 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(
             exprs[0],
             Expr.function(
-                "",
-                [],
+                Self.emptyTopFunction,
                 .binary(
                     .variable("a"),
                     .less,
@@ -171,8 +191,7 @@ final class ParserTests: XCTestCase {
         XCTAssertEqual(
             exprs[0],
             Expr.function(
-                "",
-                [],
+                Self.emptyTopFunction,
                 .binary(
                     .variable("a"),
                     .less,
@@ -200,16 +219,45 @@ final class ParserTests: XCTestCase {
 
         let exprs = Parser(input: code).parse()
         print(exprs)
-//        XCTAssertEqual(tokens.count, 29)
-//        XCTAssertEqual(tokens[0], Token.keyword(.def))
-//        XCTAssertEqual(tokens[28], Token.mark(.closeParen))
     }
     
     func testComment() {
         let code = "# Compute the x'th fibonacci number."
-
-        let tokens = Lexer(input: code).lex()
-        XCTAssertEqual(tokens.count, 1)
-        XCTAssertEqual(tokens[0], Token.comment("# Compute the x'th fibonacci number."))
+        
+        let tokens = Parser(input: code).parse()
+        XCTAssertEqual(tokens.count, 0)
+    }
+    
+    // MARK: Lesson 6
+    func testUnary() {
+        let code = """
+        def unary!(v)
+          1;
+        """
+        
+        let exprs = Parser(input: code).parse()
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function(
+                .init("unary!", ["v"], .unary, 30),
+                .number(1)
+            )
+        )
+    }
+    
+    func testBinary() {
+        let code = """
+        def binary| 5 (LHS RHS)
+          1;
+        """
+        
+        let exprs = Parser(input: code).parse()
+        XCTAssertEqual(
+            exprs[0],
+            Expr.function(
+                .init("binary|", ["LHS", "RHS"], .binary, 5),
+                .number(1)
+            )
+        )
     }
 }

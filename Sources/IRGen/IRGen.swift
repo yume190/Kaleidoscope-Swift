@@ -59,19 +59,19 @@ public extension Expr {
             }
               
             return builder.buildCall(f, args: _args, name: "calltmp")
-        case let .prototype(name, params):
+        case let .prototype(proto):
             let argTypes = [IRType](repeating: FloatType.double,
-                                    count: params.count)
+                                    count: proto.arguments.count)
             let funcType = FunctionType(argTypes, FloatType.double)
-            let function = builder.addFunction(name, type: funcType)
+            let function = builder.addFunction(proto.name, type: funcType)
 
-            for (var param, name) in zip(function.parameters, params) {
+            for (var param, name) in zip(function.parameters, proto.arguments) {
                 param.name = name
             }
 
             return function
-        case let .function(name, params, expr):
-            guard let function: Function = module.function(named: name) ?? Expr.prototype(name, params).codeGen() as? Function else {return nil}
+        case let .function(proto, expr):
+            guard let function: Function = module.function(named: proto.name) ?? Expr.prototype(proto).codeGen() as? Function else {return nil}
             
             let entryBlock = function.appendBasicBlock(named: "entry")
             builder.positionAtEnd(of: entryBlock)

@@ -27,10 +27,26 @@ final class LexerTests: XCTestCase {
         let tokens = Lexer(input: code).lex()
         XCTAssertEqual(tokens.count, 1)
         XCTAssertEqual(tokens[0], Token.comment("# Compute the x'th fibonacci number."))
-//        
-//        XCTAssertEqual failed: (
-//        "comment("# Compute the x\'th fibonacci number.")") is not equal to (
-//        "comment(" Compute the x\'th fibonacci number.")")
+    }
+    
+    func testUnary() {
+        let code = """
+        def unary!(v)
+          1;
+        """
+        
+        let tokens = Lexer(input: code).lex()
+        XCTAssertEqual(tokens.count, 8)
+    }
+    
+    func testBinary() {
+        let code = """
+        def binary| 5 (LHS RHS)
+          1;
+        """
+        
+        let tokens = Lexer(input: code).lex()
+        XCTAssertEqual(tokens.count, 10)
     }
 
     static var allTests = [

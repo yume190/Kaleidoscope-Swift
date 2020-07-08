@@ -8,6 +8,31 @@
 import Foundation
 import Token
 
+
+public struct Prototype: Equatable {
+    public enum Kind: Equatable {
+        case function
+        case unary
+        case binary
+    }
+    
+    public let name: String
+    public let arguments: [String]
+    public let kind: Kind
+    public let precedence: Precedence
+    
+    public init(
+        _ name: String,
+        _ arguments: [String],
+        _ kind: Kind,
+        _ precedence: Precedence
+    ) {
+        self.name = name
+        self.arguments = arguments
+        self.kind = kind
+        self.precedence = precedence
+    }
+}
 public indirect enum Expr: Equatable {
     case number(Double)
     case variable(String)
@@ -19,10 +44,12 @@ public indirect enum Expr: Equatable {
     /// Cond, Then, Else;
     case `if`(Expr, Expr, Expr)
     case call(String, [Expr])
+
     /// name params
-    case prototype(String, [String])
+    case prototype(Prototype)
+        
     /// name params expr
-    case function(String, [String], Expr)
+    case function(Prototype, Expr)
     /// name start end step body
     case `for`(String, Expr, Expr, Expr?, Expr)
 }
@@ -48,14 +75,36 @@ extension Expr: CustomStringConvertible {
             """
         case let .call(name, exprs):
             return "\(name)(\(exprs.map{$0.description}.joined(separator: " ")))"
-        case let .prototype(name, args):
-            return "extern \(name)(\(args.map{$0.description}.joined(separator: " ")))"
-        case let .function(name, args, expr):
-            return """
-            func \(name)(\(args.map{$0.description}.joined(separator: " "))) {
-            \(expr)
+        case let .prototype(proto):
+            #warning("TODO")
+            switch proto.kind {
+            case .function:
+                return "extern \(proto.name)(\(proto.arguments.map{$0.description}.joined(separator: " ")))"
+            default: break
             }
-            """
+            return "extern \(proto.name)(\(proto.arguments.map{$0.description}.joined(separator: " ")))"
+        case let .function(proto, expr):
+            
+            switch proto.kind {
+            case .function:
+                return """
+                def \(proto.name)(\(proto.arguments.map{$0.description}.joined(separator: " "))) {
+                \(expr)
+                }
+                """
+            case .unary:
+                return """
+                def \(proto.name)(\(proto.arguments.map{$0.description}.joined(separator: " "))) {
+                \(expr)
+                }
+                """
+            case .binary:
+                return """
+                def \(proto.name) \(proto.precedence) (\(proto.arguments.map{$0.description}.joined(separator: " "))) {
+                \(expr)
+                }
+                """
+            }    
         case let .for(name, start, end, step, body):
             let _step = step.map {", \($0)"} ?? ""
             return """
