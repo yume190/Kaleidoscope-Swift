@@ -13,7 +13,6 @@ fileprivate let endBytes: [UInt8] = [0x7d, 0x0a]
 /// https://phatbl.at/2019/01/08/intercepting-stdout-in-swift.html
 /// https://medium.com/@thesaadismail/eavesdropping-on-swifts-print-statements-57f0215efb42
 extension IRValue {
-    
     /// must use `RunLoop.main.run()` to enble GCD
     public func pipe() -> String {
         let group = DispatchGroup()

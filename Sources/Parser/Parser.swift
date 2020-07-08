@@ -9,6 +9,7 @@ import Foundation
 import Token
 import AST
 import Lexer
+import Tool
 
 public class Parser {
     private let lexer: Lexer
@@ -153,23 +154,23 @@ extension Parser.Iterator {
             
         case .keyword(.unary):
             _ = nextToken()
-            guard case let .other(char) = currentToken else { print("Expected binary operator");return nil}
-            guard char.isASCII else { print("Expected unary operator");return nil}
+            guard case let .other(char) = currentToken else { printE("Expected binary operator");return nil}
+            guard char.isASCII else { printE("Expected unary operator");return nil}
             var id = "unary"
             id.append(char)
             prototype = .unary(id)
             _ = nextToken()
         case .keyword(.binary):
             _ = nextToken()
-            guard case let .other(char) = currentToken else { print("Expected binary operator");return nil}
-            guard char.isASCII else { print("Expected unary operator");return nil}
+            guard case let .other(char) = currentToken else { printE("Expected binary operator");return nil}
+            guard char.isASCII else { printE("Expected unary operator");return nil}
             var id = "binary"
             id.append(char)
             _ = nextToken() // eat op
             
             if case let .number(num) = self.currentToken {
                 guard 1 <= num && num <= 100 else {
-                    print("Invalid precedence: must be 1..100")
+                    printE("Invalid precedence: must be 1..100")
                     return nil
                 }
                 prototype = .binary(id, Precedence(num))
@@ -178,12 +179,12 @@ extension Parser.Iterator {
             }
             prototype = .binary(id, 30)
         default:
-            print("Expected function name in prototype")
+            printE("Expected function name in prototype")
             return nil
         }
         
         if currentToken != .mark(.openParen) {
-            print("Expected '(' in prototype")
+            printE("Expected '(' in prototype")
             return nil
         }
         
@@ -193,7 +194,7 @@ extension Parser.Iterator {
         }
         
         if currentToken != .mark(.closeParen) {
-            print("Expected ')' in prototype")
+            printE("Expected ')' in prototype")
             return nil
         }
         
@@ -204,13 +205,13 @@ extension Parser.Iterator {
             return .prototype(.init(fnName, argNames, .function, 30))
         case .unary(let op):
             guard argNames.count == 1 else {
-                print("Invalid number of operands for operator")
+                printE("Invalid number of operands for operator")
                 return nil
             }
             return .prototype(.init(op, argNames, .unary, 30))
         case let .binary(op, pred):
             guard argNames.count == 2 else {
-                print("Invalid number of operands for operator")
+                printE("Invalid number of operands for operator")
                 return nil
             }
             return .prototype(.init(op, argNames, .binary, pred))
@@ -269,7 +270,7 @@ extension Parser.Iterator {
         case .keyword(let kw) where kw == .for:
             return self.parseForExpr()
         default:
-            print("unknown token when expecting an expression")
+            printE("unknown token when expecting an expression")
             return nil
         }
     }
@@ -292,7 +293,7 @@ extension Parser.Iterator {
         }
         
         if currentToken != .mark(.closeParen) {
-            print("expected ')'")
+            printE("expected ')'")
             return nil
         }
         
@@ -336,7 +337,7 @@ extension Parser.Iterator {
             }
             
             if self.currentToken != .mark(.comma) {
-                print("Expected ')' or ',' in argument list")
+                printE("Expected ')' or ',' in argument list")
                 return nil
             }
         
@@ -355,7 +356,7 @@ extension Parser.Iterator {
         guard let cond = self.parseExpression() else {return nil}
         
         if currentToken != .keyword(.then) {
-            print("expected then")
+            printE("expected then")
             return nil
         }
         
@@ -364,7 +365,7 @@ extension Parser.Iterator {
         guard let then = self.parseExpression() else { return nil }
         
         if currentToken != .keyword(.else) {
-            print("expected else")
+            printE("expected else")
             return nil
         }
 
@@ -379,20 +380,20 @@ extension Parser.Iterator {
         _ = self.nextToken() // eat for
         
         guard case let .identifier(name) = currentToken else {
-            print("expected identifier after for")
+            printE("expected identifier after for")
             return nil
         }
         _ = self.nextToken() // eat identifier
         
         guard currentToken == Token.operator(.equals) else {
-            print("expected '=' after for")
+            printE("expected '=' after for")
             return nil
         }
         _ = self.nextToken() // eat =
         
         guard let start = self.parseExpression() else {return nil}
         guard currentToken == Token.mark(.comma) else {
-            print("expected ',' after for start value")
+            printE("expected ',' after for start value")
             return nil
         }
         _ = self.nextToken() // eat expr
@@ -407,7 +408,7 @@ extension Parser.Iterator {
         }
         
         guard Token.keyword(Keyword.in) == currentToken else {
-            print("expected 'in' after for")
+            printE("expected 'in' after for")
             return nil
         }
         _ = self.nextToken() // eat in
@@ -425,7 +426,7 @@ extension Parser.Iterator {
 //extension Parser.Iterator {
 //    func handleDefinition() {
 //        if let _ = self.parseDefinition() {
-//            print("Parsed a function definition.\n")
+//            printE("Parsed a function definition.\n")
 //        } else {
 //            _ = self.nextToken()
 //        }
@@ -433,7 +434,7 @@ extension Parser.Iterator {
 //
 //    func handleExtern() {
 //        if let _ = self.parseExtern() {
-//            print("Parsed an extern\n")
+//            printE("Parsed an extern\n")
 //        } else {
 //            _ = self.nextToken()
 //        }
@@ -441,7 +442,7 @@ extension Parser.Iterator {
 //
 //    func handleTopLevelExpression() {
 //        if let _ = self.parseTopLevelExpr() {
-//            print("Parsed a top-level expr\n")
+//            printE("Parsed a top-level expr\n")
 //        } else {
 //            _ = self.nextToken()
 //        }

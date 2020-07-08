@@ -28,7 +28,7 @@ let package = Package(
             dependencies: ["Lexer", "AST", "Parser", "IRGen", "ArgumentParser"]),
         .target(
             name: "IRGen",
-            dependencies: ["AST", "LLVM"]),
+            dependencies: ["AST", "LLVM", "Parser", "Tool"]),
         .target(
             name: "Token"),
         .target(
@@ -39,7 +39,10 @@ let package = Package(
             dependencies: ["Token"]),
         .target(
             name: "Parser",
-            dependencies: ["AST", "Lexer", "Token"]),
+            dependencies: ["AST", "Lexer", "Token", "Tool"]),
+        .target(
+            name: "Tool",
+            dependencies: []),
         .testTarget(
             name: "KaleidoscopeTests",
             dependencies: ["Kaleidoscope", "Lexer", "AST", "Parser", "IRGen"]),

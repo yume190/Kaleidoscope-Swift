@@ -1,33 +1,81 @@
 import LLVM
 import AST
+import Tool
+import Parser
 
-fileprivate var namedValues: [String:IRValue] = [:]
+public final class Contexts {
+    public let context: Context
+    public let module: Module
+    public let builder: IRBuilder
+    public let passPipeliner: PassPipeliner
+    
+    fileprivate var namedValues: [String:IRValue] = [:]
+    fileprivate var functionProtos: [String: Function] = [:]
+    
+    public init(isActiveOptimizerPass: Bool = true) {
+        self.context = Context()
+        self.module = Module(name: "name", context: context)
+        self.builder = .init(module: module)
+        self.passPipeliner = .init(module: module)
+        
+        if isActiveOptimizerPass {
+            self.activeOptimizerPass()
+        }
+    }
+    
+    #warning("TODO")
+    func getFunction(name: String) -> Function {
+        return module.function(named: name)!
+    }
+    
+    /// L4 Optimizer Pass
+    private final func activeOptimizerPass() {
+        passPipeliner.addStage("YumeOptimizeStatge") { builder in
+            builder.add(Pass.instructionCombining)
+            builder.add(Pass.reassociate)
+            builder.add(Pass.gvn)
+            builder.add(Pass.cfgSimplification)
+        }
+        // TheFPM->doInitialization();
+    }
+    public func codeGen(input: String) {
+        Parser(input: input).forEach { (expr) in
+            _ = expr.codeGen(self)
+        }
+    }
+    
+    public func dump(input: String) {
+        Parser(input: input).forEach { (expr) in
+            expr.codeGen(self)?.dump()
+        }
+    }
+}
 
-public extension Expr {
-    func codeGen() -> IRValue? {
+extension Expr {
+    func codeGen(_ contexts: Contexts) -> IRValue? {
         switch self {
         case .number(let num):
             return FloatType.double.constant(num)
         case .variable(let variable):
-            guard let v = namedValues[variable] else {
+            guard let v = contexts.namedValues[variable] else {
                 printE("Unknown variable name")
                 return nil
             }
             return v
         case let .binary(lhs, op, rhs):
-            guard let l = lhs.codeGen() else {return nil}
-            guard let r = rhs.codeGen() else {return nil}
+            guard let l = lhs.codeGen(contexts) else {return nil}
+            guard let r = rhs.codeGen(contexts) else {return nil}
             
             switch op {
             case .plus:
-                return builder.buildAdd(l, r, name: "addtmp")
+                return contexts.builder.buildAdd(l, r, name: "addtmp")
             case .minus:
-                return builder.buildSub(l, r, name: "subtmp")
+                return contexts.builder.buildSub(l, r, name: "subtmp")
             case .times:
-                return builder.buildMul(l, r, name: "multmp")
+                return contexts.builder.buildMul(l, r, name: "multmp")
             case .less:
-                let aa = builder.buildFCmp(l, r, .unorderedLessThan, name: "cmptmp")
-                return builder.buildIntToFP(aa, type: FloatType.double, signed: false, name: "booltmp")
+                let aa = contexts.builder.buildFCmp(l, r, .unorderedLessThan, name: "cmptmp")
+                return contexts.builder.buildIntToFP(aa, type: FloatType.double, signed: false, name: "booltmp")
 //                return builder.buildFCmp(l, r, .orderedLessThan, name: "boolCmp")
 //                case '<':
 //                  L = Builder.CreateFCmpULT(L, R, "cmptmp");
@@ -37,10 +85,16 @@ public extension Expr {
             default:
                 printE("invalid binary operator")
                 return nil
+//                break
             }
+            
+//            var fName = "binary"
+//            fName.append(op.rawValue)
+//            let f = contexts.getFunction(name: fName)
+//            return contexts.builder.buildCall(f, args: [l, r], name: "binop")
         case let .call(name, args):
             
-            guard let f: Function = module.function(named: name) else {
+            guard let f: Function = contexts.module.function(named: name) else {
                 printE("Unknown function referenced")
                 return nil
             }
@@ -52,18 +106,18 @@ public extension Expr {
                 
             var _args: [IRValue] = []
             for arg in args {
-                guard let genedCode = arg.codeGen() else {
+                guard let genedCode = arg.codeGen(contexts) else {
                     return nil
                 }
                 _args.append(genedCode)
             }
               
-            return builder.buildCall(f, args: _args, name: "calltmp")
+            return contexts.builder.buildCall(f, args: _args, name: "calltmp")
         case let .prototype(proto):
             let argTypes = [IRType](repeating: FloatType.double,
                                     count: proto.arguments.count)
             let funcType = FunctionType(argTypes, FloatType.double)
-            let function = builder.addFunction(proto.name, type: funcType)
+            let function = contexts.builder.addFunction(proto.name, type: funcType)
 
             for (var param, name) in zip(function.parameters, proto.arguments) {
                 param.name = name
@@ -71,18 +125,18 @@ public extension Expr {
 
             return function
         case let .function(proto, expr):
-            guard let function: Function = module.function(named: proto.name) ?? Expr.prototype(proto).codeGen() as? Function else {return nil}
+            guard let function: Function = contexts.module.function(named: proto.name) ?? Expr.prototype(proto).codeGen(contexts) as? Function else {return nil}
             
             let entryBlock = function.appendBasicBlock(named: "entry")
-            builder.positionAtEnd(of: entryBlock)
+            contexts.builder.positionAtEnd(of: entryBlock)
             
-            namedValues.removeAll()
+            contexts.namedValues.removeAll()
             for arg in function.parameters {
-                namedValues[arg.name] = arg
+                contexts.namedValues[arg.name] = arg
             }
             
-            if let retValue = expr.codeGen() {
-                builder.buildRet(retValue)
+            if let retValue = expr.codeGen(contexts) {
+                contexts.builder.buildRet(retValue)
                 
                 // Validate the generated code, checking for consistency.
 //                verifyFunction(*TheFunction);
@@ -90,7 +144,7 @@ public extension Expr {
                 /// L4 JIT
                 // Optimize the function.
                 // TheFPM->run(*TheFunction);
-                passPipeliner.execute()
+                contexts.passPipeliner.execute()
 
                 return function
             }
@@ -99,36 +153,36 @@ public extension Expr {
             function.eraseFromParent()
             return nil
         case let .if(cond, then, `else`):
-            guard let condV = cond.codeGen() else { return nil }
+            guard let condV = cond.codeGen(contexts) else { return nil }
             
-            let condV2 = builder.buildFCmp(condV, FloatType.double.constant(0), .orderedNotEqual, name: "ifcond")
-            guard let theFunction = builder.insertBlock?.parent else {return nil}
+            let condV2 = contexts.builder.buildFCmp(condV, FloatType.double.constant(0), .orderedNotEqual, name: "ifcond")
+            guard let theFunction = contexts.builder.insertBlock?.parent else {return nil}
             
-            let thenBB = theFunction.appendBasicBlock(named: "then", in: context)
-            let elseBB = BasicBlock(context: context, name: "else")
-            let mergeBB = BasicBlock(context: context, name: "ifcont")
-            builder.buildCondBr(condition: condV2, then: thenBB, else: elseBB)
+            let thenBB = theFunction.appendBasicBlock(named: "then", in: contexts.context)
+            let elseBB = BasicBlock(context: contexts.context, name: "else")
+            let mergeBB = BasicBlock(context: contexts.context, name: "ifcont")
+            contexts.builder.buildCondBr(condition: condV2, then: thenBB, else: elseBB)
             
             // Emit then value.
-            builder.positionAtEnd(of: thenBB)
-            guard let thenV = then.codeGen() else {return nil}
-            builder.buildBr(mergeBB)
+            contexts.builder.positionAtEnd(of: thenBB)
+            guard let thenV = then.codeGen(contexts) else {return nil}
+            contexts.builder.buildBr(mergeBB)
             // Codegen of 'Then' can change the current block, update ThenBB for the PHI.
-            let thenBB2 = builder.insertBlock
+            let thenBB2 = contexts.builder.insertBlock
             
             // Emit else block.
             theFunction.append(elseBB)
-            builder.positionAtEnd(of: elseBB)
-            guard let elseV = `else`.codeGen() else {return nil}
-            builder.buildBr(mergeBB)
+            contexts.builder.positionAtEnd(of: elseBB)
+            guard let elseV = `else`.codeGen(contexts) else {return nil}
+            contexts.builder.buildBr(mergeBB)
             // Codegen of 'Else' can change the current block, update ElseBB for the PHI.
-            let elseBB2 = builder.insertBlock
+            let elseBB2 = contexts.builder.insertBlock
             
             // Emit merge block.
             theFunction.append(mergeBB)
-            builder.positionAtEnd(of: mergeBB)
+            contexts.builder.positionAtEnd(of: mergeBB)
 //            PHINode *PN = Builder.CreatePHI(Type::getDoubleTy(TheContext), 2, "iftmp");
-            let pn = builder.buildPhi(FloatType.double, name: "iftmp")
+            let pn = contexts.builder.buildPhi(FloatType.double, name: "iftmp")
             
             pn.addIncoming([
                 (thenV, thenBB2!),
@@ -138,45 +192,45 @@ public extension Expr {
             return pn
             
         case let .for(name, start, end, step, body):
-            guard let startV = start.codeGen() else { return nil }
+            guard let startV = start.codeGen(contexts) else { return nil }
             
-            guard let theFunction = builder.insertBlock?.parent else {return nil}
-            let preheaderBB = builder.insertBlock
-            let loopBB = theFunction.appendBasicBlock(named: "loop", in: context)
-            builder.buildBr(loopBB)
+            guard let theFunction = contexts.builder.insertBlock?.parent else {return nil}
+            let preheaderBB = contexts.builder.insertBlock
+            let loopBB = theFunction.appendBasicBlock(named: "loop", in: contexts.context)
+            contexts.builder.buildBr(loopBB)
             
-            builder.positionAtEnd(of: loopBB)
-            let variable = builder.buildPhi(FloatType.double, name: name)
+            contexts.builder.positionAtEnd(of: loopBB)
+            let variable = contexts.builder.buildPhi(FloatType.double, name: name)
             variable.addIncoming([(startV, preheaderBB!)])
             
-            let oldValue = namedValues[name]
-            namedValues[name] = variable
+            let oldValue = contexts.namedValues[name]
+            contexts.namedValues[name] = variable
 
-            guard let _ = body.codeGen() else { return nil }
+            guard let _ = body.codeGen(contexts) else { return nil }
             var stepV: IRValue?
             if let _step = step {
-                stepV = _step.codeGen()
+                stepV = _step.codeGen(contexts)
                 if stepV == nil {return nil}
             } else {
                 /// APFloat(1.0)
                 stepV = FloatType.double.constant(1)
             }
             
-            let nextVar = builder.buildAdd(variable, stepV!, name: "nextvar")
+            let nextVar = contexts.builder.buildAdd(variable, stepV!, name: "nextvar")
             
-            guard let endV = end.codeGen() else { return nil }
+            guard let endV = end.codeGen(contexts) else { return nil }
             
-            let endV2 = builder.buildFCmp(endV, FloatType.double.constant(0), .orderedNotEqual, name: "loopcond")
+            let endV2 = contexts.builder.buildFCmp(endV, FloatType.double.constant(0), .orderedNotEqual, name: "loopcond")
             
-            let loopEndBB = builder.insertBlock
-            let afterBB = theFunction.appendBasicBlock(named: "afterloop", in: context)
-            builder.buildCondBr(condition: endV2, then: loopBB, else: afterBB)
-            builder.positionAtEnd(of: afterBB)
+            let loopEndBB = contexts.builder.insertBlock
+            let afterBB = theFunction.appendBasicBlock(named: "afterloop", in: contexts.context)
+            contexts.builder.buildCondBr(condition: endV2, then: loopBB, else: afterBB)
+            contexts.builder.positionAtEnd(of: afterBB)
             variable.addIncoming([(nextVar, loopEndBB!)])
             if let oldValue = oldValue {
-                namedValues[name] = oldValue
+                contexts.namedValues[name] = oldValue
             } else {
-                namedValues.removeValue(forKey: name)
+                contexts.namedValues.removeValue(forKey: name)
             }
             return FloatType.double.constant(0)
         }

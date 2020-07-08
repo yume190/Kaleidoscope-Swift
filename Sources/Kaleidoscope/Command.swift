@@ -22,14 +22,14 @@ struct Command: ParsableCommand {
     
     func run() throws {
         let code = try String(contentsOfFile: self.file)
-        Parser(input: code).forEach { (expr) in
-            expr.codeGen()?.dump()
-        }
+        let contexts = Contexts()
+        contexts.codeGen(input: code)
+        
         /// x86_64-apple-darwin19.5.0
         let machine = try TargetMachine(triple: .default, cpu: "x86-64", features: "", optLevel: .default, relocations: .default, codeModel: .default)
-        module.targetTriple = .default
-        module.dataLayout = machine.dataLayout
-        passPipeliner.execute()
-        try machine.emitToFile(module: module, type: .object, path: self.output)
+        contexts.module.targetTriple = .default
+        contexts.module.dataLayout = machine.dataLayout
+        contexts.passPipeliner.execute()
+        try machine.emitToFile(module: contexts.module, type: .object, path: self.output)
     }
 }
