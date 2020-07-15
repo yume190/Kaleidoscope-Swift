@@ -2,6 +2,9 @@ import LLVM
 import AST
 import Tool
 import Parser
+import Token
+import Darwin
+import Foundation
 
 public final class Contexts {
     public let context: Context
@@ -10,7 +13,9 @@ public final class Contexts {
     public let passPipeliner: PassPipeliner
     
     fileprivate var namedValues: [String:IRValue] = [:]
-    fileprivate var functionProtos: [String: Function] = [:]
+    /// [String: PrototypeAST]
+    fileprivate var functionProtos: [String: Prototype] = [:]
+    fileprivate var binopPrecedence: [Character: Precedence] = [:]
     
     public init(isActiveOptimizerPass: Bool = true) {
         self.context = Context()
@@ -24,8 +29,14 @@ public final class Contexts {
     }
     
     #warning("TODO")
-    func getFunction(name: String) -> Function {
-        return module.function(named: name)!
+    func getFunction(name: String) -> Function? {
+        if let f = module.function(named: name) {
+            return f
+        }
+        if let fi = self.functionProtos[name] {
+            return Expr.prototype(fi).codeGen(self) as? Function
+        }
+        return nil
     }
     
     /// L4 Optimizer Pass
@@ -67,13 +78,13 @@ extension Expr {
             guard let r = rhs.codeGen(contexts) else {return nil}
             
             switch op {
-            case .plus:
+            case BinaryOperator.plus.rawValue:
                 return contexts.builder.buildAdd(l, r, name: "addtmp")
-            case .minus:
+            case BinaryOperator.minus.rawValue:
                 return contexts.builder.buildSub(l, r, name: "subtmp")
-            case .times:
+            case BinaryOperator.times.rawValue:
                 return contexts.builder.buildMul(l, r, name: "multmp")
-            case .less:
+            case BinaryOperator.less.rawValue:
                 let aa = contexts.builder.buildFCmp(l, r, .unorderedLessThan, name: "cmptmp")
                 return contexts.builder.buildIntToFP(aa, type: FloatType.double, signed: false, name: "booltmp")
 //                return builder.buildFCmp(l, r, .orderedLessThan, name: "boolCmp")
@@ -83,15 +94,15 @@ extension Expr {
 //                  return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),
 //                                              "booltmp");
             default:
-                printE("invalid binary operator")
-                return nil
-//                break
+//                printE("invalid binary operator")
+//                return nil
+                break
             }
             
-//            var fName = "binary"
-//            fName.append(op.rawValue)
-//            let f = contexts.getFunction(name: fName)
-//            return contexts.builder.buildCall(f, args: [l, r], name: "binop")
+            var fName = "binary"
+            fName.append(op)
+            let f = contexts.getFunction(name: fName)
+            return contexts.builder.buildCall(f!, args: [l, r], name: "binop")
         case let .call(name, args):
             
             guard let f: Function = contexts.module.function(named: name) else {
@@ -125,7 +136,15 @@ extension Expr {
 
             return function
         case let .function(proto, expr):
-            guard let function: Function = contexts.module.function(named: proto.name) ?? Expr.prototype(proto).codeGen(contexts) as? Function else {return nil}
+            contexts.functionProtos[proto.name] = proto
+            
+            guard let function = contexts.getFunction(name: proto.name) else {return nil}
+            switch proto.kind {
+            case .binary:
+                contexts.binopPrecedence[proto.name.last ?? " "] = proto.precedence
+            default:
+                break
+            }
             
             let entryBlock = function.appendBasicBlock(named: "entry")
             contexts.builder.positionAtEnd(of: entryBlock)
@@ -139,7 +158,7 @@ extension Expr {
                 contexts.builder.buildRet(retValue)
                 
                 // Validate the generated code, checking for consistency.
-//                verifyFunction(*TheFunction);
+                // verifyFunction(*TheFunction);
 
                 /// L4 JIT
                 // Optimize the function.
@@ -233,6 +252,19 @@ extension Expr {
                 contexts.namedValues.removeValue(forKey: name)
             }
             return FloatType.double.constant(0)
+        case let .unary(op, operand):
+            guard let operandV = operand.codeGen(contexts) else {return nil}
+            
+            var name = "unary"
+            name.append(op)
+            guard let f = contexts.getFunction(name: name) else {
+                printE("Unknown unary operator")
+                return nil
+            }
+            
+            return contexts.builder.buildCall(f, args: [operandV], name: "unop")
+        default:
+            return nil
         }
     }
 }

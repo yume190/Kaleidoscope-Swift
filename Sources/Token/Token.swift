@@ -12,7 +12,7 @@ public enum Token {
 
 extension Token: Equatable {}
 
-//public extension Token {
+public extension Token {
 //    var string: String {
 //        switch self {
 //        case let .keyword(keyword): return keyword.rawValue
@@ -25,18 +25,29 @@ extension Token: Equatable {}
 //        }
 //    }
 //    
-//    var char: Character? {
-//        switch self {
-//        case let .keyword(keyword): return keyword.rawValue.first
-//        case let .operator(op): return op.rawValue
-//        case let .mark(mark): return mark.rawValue
-//        case let .identifier(id): return id.first
-//        case let .number(num): return "\(num)".first
-//        case let .comment(comment): return comment.first
-//        case let .other(char): return char
-//        }
-//    }
-//}
+    var char: Character? {
+        switch self {
+        case .keyword(_): return nil
+        case let .operator(op): return op.rawValue
+        case let .mark(mark): return mark.rawValue
+        case .identifier(_): return nil
+        case .number(_): return nil
+        case .comment(_): return nil
+        case let .other(char): return char
+        }
+    }
+    var isASCII: Bool {
+        switch self {
+        case .keyword(_): return false
+        case let .operator(op): return op.rawValue.isASCII
+        case let .mark(mark): return mark.rawValue.isASCII
+        case .identifier(_): return false
+        case .number(_): return false
+        case .comment(_): return false // don't care
+        case let .other(char): return char.isASCII
+        }
+    }
+}
 
 extension Token: CustomStringConvertible {
     public var description: String {

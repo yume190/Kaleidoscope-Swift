@@ -20,11 +20,13 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                Self.emptyTopFunction,
-                .number(3)
-            )
+            exprs,
+            [
+                Expr.function(
+                    Self.emptyTopFunction,
+                    .number(3)
+                )
+            ]
         )
     }
     func testId1() throws {
@@ -32,11 +34,13 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                Self.emptyTopFunction,
-                Expr.variable("fib")
-            )
+            exprs,
+            [
+                Expr.function(
+                    Self.emptyTopFunction,
+                    Expr.variable("fib")
+                )
+            ]
         )
     }
     
@@ -45,11 +49,13 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                Self.emptyTopFunction,
-                Expr.call("fib", [])
-            )
+            exprs,
+            [
+                Expr.function(
+                    Self.emptyTopFunction,
+                    Expr.call("fib", [])
+                )
+            ]
         )
     }
     
@@ -58,11 +64,13 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                Self.emptyTopFunction,
-                Expr.call("fib", [.variable("a")])
-            )
+            exprs,
+            [
+                Expr.function(
+                    Self.emptyTopFunction,
+                    Expr.call("fib", [.variable("a")])
+                )
+            ]
         )
     }
     
@@ -71,11 +79,13 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                Self.emptyTopFunction,
-                Expr.call("fib", [.variable("a"), .variable("b")])
-            )
+            exprs,
+            [
+                Expr.function(
+                    Self.emptyTopFunction,
+                    Expr.call("fib", [.variable("a"), .variable("b")])
+                )
+            ]
         )
     }
     
@@ -84,10 +94,12 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.prototype(
-                .init("printd", [], .function, 30)
-            )
+            exprs,
+            [
+                Expr.prototype(
+                    .init("printd", [], .function, 30)
+                )
+            ]
         )
     }
     
@@ -96,10 +108,12 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.prototype(
-                .init("printd", ["x"], .function, 30)
-            )
+            exprs,
+            [
+                Expr.prototype(
+                    .init("printd", ["x"], .function, 30)
+                )
+            ]
         )
     }
     
@@ -108,10 +122,12 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.prototype(
-                .init("printd", ["x", "y"], .function, 30)
-            )
+            exprs,
+            [
+                Expr.prototype(
+                    .init("printd", ["x", "y"], .function, 30)
+                )
+            ]
         )
     }
     
@@ -125,15 +141,54 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                Self.emptyTopFunction,
-                .if(
-                    .binary(.variable("x"), .less, .number(3)),
-                    .number(1),
-                    .variable("x")
+            exprs,
+            [
+                Expr.function(
+                    Self.emptyTopFunction,
+                    .if(
+                        .binary(.variable("x"), "<", .number(3)),
+                        .number(1),
+                        .variable("x")
+                    )
                 )
-            )
+            ]
+        )
+    }
+    
+    func testMultiIf() throws {
+        let code = """
+        def density(d)
+          if d < 8 then
+            1
+          else if d < 4 then
+            2
+          else if d < 2 then
+            3
+          else
+            4;
+        """
+        
+        let exprs = Parser(input: code).parse()
+        XCTAssertEqual(
+            exprs,
+            [
+                .function(
+                    .init("density", ["d"], .function, 30),
+                    .if(
+                        .binary(.variable("d"), "<", .number(8)),
+                        .number(1),
+                        .if(
+                            .binary(.variable("d"), "<", .number(4)),
+                            .number(2),
+                            .if(
+                                .binary(.variable("d"), "<", .number(2)),
+                                .number(3),
+                                .number(4)
+                            )
+                        )
+                    )
+                )
+            ]
         )
     }
     
@@ -157,20 +212,22 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
+            exprs,
+            [
             Expr.function(
                 Self.emptyTopFunction,
                 .binary(
                     .variable("a"),
-                    .less,
+                    "<",
                     .binary(
-                        .binary(.variable("b"), .plus, .variable("c")),
-                        .minus,
-                        .binary(.variable("d"), .times, .variable("e"))
+                        .binary(.variable("b"), "+", .variable("c")),
+                        "-",
+                        .binary(.variable("d"), "*", .variable("e"))
                     )
                 )
                 
             )
+                ]
         )
     }
     
@@ -189,20 +246,22 @@ final class ParserTests: XCTestCase {
         let exprs = Parser(input: code).parse()
         
         XCTAssertEqual(
-            exprs[0],
+            exprs,
+            [
             Expr.function(
                 Self.emptyTopFunction,
                 .binary(
                     .variable("a"),
-                    .less,
+                    "<",
                     .binary(
-                        .binary(.variable("b"), .minus, .variable("c")),
-                        .plus,
-                        .binary(.variable("d"), .times, .variable("e"))
+                        .binary(.variable("b"), "-", .variable("c")),
+                        "+",
+                        .binary(.variable("d"), "*", .variable("e"))
                     )
                 )
                 
             )
+                ]
         )
     }
     
@@ -216,7 +275,7 @@ final class ParserTests: XCTestCase {
 
         fib(40)
         """
-
+        
         let exprs = Parser(input: code).parse()
         print(exprs)
     }
@@ -237,11 +296,13 @@ final class ParserTests: XCTestCase {
         
         let exprs = Parser(input: code).parse()
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                .init("unary!", ["v"], .unary, 30),
-                .number(1)
-            )
+            exprs,
+            [
+                Expr.function(
+                    .init("unary!", ["v"], .unary, 30),
+                    .number(1)
+                )
+            ]
         )
     }
     
@@ -253,11 +314,109 @@ final class ParserTests: XCTestCase {
         
         let exprs = Parser(input: code).parse()
         XCTAssertEqual(
-            exprs[0],
-            Expr.function(
-                .init("binary|", ["LHS", "RHS"], .binary, 5),
-                .number(1)
-            )
+            exprs,
+            [
+                Expr.function(
+                    .init("binary|", ["LHS", "RHS"], .binary, 5),
+                    .number(1)
+                )
+            ]
+        )
+    }
+    
+    func testLesson6() throws {
+        let code = """
+        # Logical unary not.
+        def unary!(v)
+          if v then
+            0
+          else
+            1;
+
+        # Unary negate.
+        def unary-(v)
+          0-v;
+
+        # Define > with the same precedence as <.
+        def binary> 10 (LHS RHS)
+          RHS < LHS;
+
+        # Binary logical or, which does not short circuit.
+        def binary| 5 (LHS RHS)
+          if LHS then
+            1
+          else if RHS then
+            1
+          else
+            0;
+
+        # Binary logical and, which does not short circuit.
+        def binary& 6 (LHS RHS)
+          if !LHS then
+            0
+          else
+            !!RHS;
+
+        # Define = with slightly lower precedence than relationals.
+        def binary = 9 (LHS RHS)
+          !(LHS < RHS | LHS > RHS);
+
+        # Define ':' for sequencing: as a low-precedence operator that ignores operands
+        # and just returns the RHS.
+        def binary : 1 (x y) y;
+        """
+        let exprs = Parser(input: code).parse()
+        XCTAssertEqual(
+            exprs,
+            [
+                .function(
+                    .init("unary!", ["v"], .unary, 30),
+                    .if(.variable("v"), .number(0), .number(1))
+                ),
+                .function(
+                    .init("unary-", ["v"], .unary, 30),
+                    .binary(.number(0), "-", .variable("v"))
+                ),
+                .function(
+                    .init("binary>", ["LHS", "RHS"], .binary, 10),
+                    .binary(.variable("RHS"), "<", .variable("LHS"))
+                ),
+                .function(
+                    .init("binary|", ["LHS", "RHS"], .binary, 5),
+                    .if(
+                        .variable("LHS"),
+                        .number(1),
+                        .if(
+                            .variable("RHS"),
+                            .number(1),
+                            .number(0)
+                        )
+                    )
+                ),
+                .function(
+                    .init("binary&", ["LHS", "RHS"], .binary, 6),
+                    .if(
+                        .unary("!", .variable("LHS")),
+                        .number(0),
+                        .unary("!", .unary("!", .variable("RHS")))
+                    )
+                ),
+                .function(
+                    .init("binary=", ["LHS", "RHS"], .binary, 9),
+                    .unary(
+                        "!",
+                        .binary(
+                            .binary(.variable("LHS"), "<", .variable("RHS")),
+                            "|",
+                            .binary(.variable("LHS"), ">", .variable("RHS"))
+                        )
+                    )
+                ),
+                .function(
+                    .init("binary:", ["x", "y"], .binary, 1),
+                    .variable("y")
+                )
+            ]
         )
     }
 }

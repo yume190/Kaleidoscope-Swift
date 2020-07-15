@@ -41,11 +41,11 @@ extension Parser {
         private let lexer: Lexer
         private let iterator : Lexer.Iterator
         private var currentToken: Token? = nil
-        private let binopPrecedence: [BinaryOperator: Precedence] = [
-            .less: 10,
-            .plus: 20,
-            .minus: 20,
-            .times: 40
+        private var binopPrecedence: [Character: Precedence] = [
+            BinaryOperator.less.rawValue: 10,
+            BinaryOperator.plus.rawValue: 20,
+            BinaryOperator.minus.rawValue: 20,
+            BinaryOperator.times.rawValue: 40
         ]
         
         @inline(__always)
@@ -62,14 +62,17 @@ extension Parser {
 
         /// top ::= definition | external | expression | ';'
         public func next() -> Expr? {
+            while case .comment(_) = self.currentToken {
+                self.nextToken() // eat comment
+            }
             switch self.currentToken {
             case .none: return nil
             case .mark(let m) where m == .semicolon :
                 _ = self.nextToken()
                 return self.next()
-            case .keyword(let kw) where kw == .def :
+            case .keyword(.def):
                 return self.parseDefinition()
-            case .keyword(let kw) where kw == .extern :
+            case .keyword(.extern):
                 return self.parseExtern()
             default:
                 return self.parseTopLevelExpr()
@@ -79,6 +82,7 @@ extension Parser {
 }
  
 extension Parser.Iterator {
+    @discardableResult
     private final func nextToken() -> Token? {
         self.currentToken = iterator.next()
         return self.currentToken
@@ -87,21 +91,52 @@ extension Parser.Iterator {
     /// expression
     ///   ::= primary binoprhs
     private final func parseExpression() -> Expr? {
-        guard let lhs = self.parsePrimary() else {
+        guard let lhs = self.parseUnary() else {
             return nil
         }
         return self.parseBinOpRHS(exprPrec: 0, lhs: lhs)
     }
     
     private final func getTokenPrecedence() -> Int {
-        guard case let .`operator`(op) = self.currentToken else {
+        switch self.currentToken {
+        case let .operator(op): 
+            return self.binopPrecedence[op.rawValue] ?? -1
+        case let .other(op):
+            return self.binopPrecedence[op] ?? -1
+        default:
             return -1
         }
-        return self.binopPrecedence[op] ?? -1
+    }
+    
+    /// unary
+    ///   ::= primary
+    ///   ::= '!' unary
+    private final func parseUnary() -> Expr? {
+        guard let token = currentToken else {return nil}
+        
+        if !token.isASCII {
+            return self.parsePrimary()
+        }
+        switch token {
+        case .mark(.openParen), .mark(.comma):
+            return self.parsePrimary()
+        default:
+            break
+        }
+        
+        switch currentToken {
+        case .other(let char):
+            _ = self.nextToken()
+            guard let expr = self.parseUnary() else { printE("should parse unary");return nil }
+            return .unary(char, expr)
+        default:
+            return nil
+        }
     }
     
     /// binoprhs
     ///   ::= ('+' primary)*
+    ///   ::= ('+' unary)*
     private final func parseBinOpRHS(exprPrec: Int, lhs: Expr) -> Expr? {
         var lhs: Expr = lhs
         while true {
@@ -111,10 +146,10 @@ extension Parser.Iterator {
             }
             
             // Okay, we know this is a binop.
-            guard case let .operator(binOp) = self.currentToken else {return nil}
+            guard let binOp = self.currentToken?.char else {return nil}
             _ = self.nextToken() // eat binop
 
-            guard var rhs = self.parsePrimary() else {
+            guard var rhs = self.parseUnary() else {
                 return nil
             }
             
@@ -154,16 +189,16 @@ extension Parser.Iterator {
             
         case .keyword(.unary):
             _ = nextToken()
-            guard case let .other(char) = currentToken else { printE("Expected binary operator");return nil}
-            guard char.isASCII else { printE("Expected unary operator");return nil}
+            guard let char = currentToken!.char else { printE("Expected binary operator");return nil}
+            guard currentToken!.isASCII else { printE("Expected unary operator");return nil}
             var id = "unary"
             id.append(char)
             prototype = .unary(id)
             _ = nextToken()
         case .keyword(.binary):
             _ = nextToken()
-            guard case let .other(char) = currentToken else { printE("Expected binary operator");return nil}
-            guard char.isASCII else { printE("Expected unary operator");return nil}
+            guard let char = currentToken!.char else { printE("Expected binary operator");return nil}
+            guard currentToken!.isASCII else { printE("Expected unary operator");return nil}
             var id = "binary"
             id.append(char)
             _ = nextToken() // eat op
@@ -174,7 +209,7 @@ extension Parser.Iterator {
                     return nil
                 }
                 prototype = .binary(id, Precedence(num))
-                _ = nextToken()
+                _ = nextToken() // eat Precedence
                 break
             }
             prototype = .binary(id, 30)
@@ -229,6 +264,11 @@ extension Parser.Iterator {
         guard let e = self.parseExpression() else {
             return nil
         }
+        if proto.kind == .binary || proto.kind == .unary {
+            guard let op: Character = proto.name.last else { printE("should have op");return nil }
+            self.binopPrecedence[op] = proto.precedence
+        }
+        
         return .function(proto, e)
     }
     

@@ -37,7 +37,7 @@ public indirect enum Expr: Equatable {
     case number(Double)
     case variable(String)
     /// lhs op rhs
-    case binary(Expr, BinaryOperator, Expr)
+    case binary(Expr, Character, Expr)
     
     /// L5 AST Extensions for If/Then/Else
     /// std::unique_ptr<ExprAST> Cond, Then, Else;
@@ -52,6 +52,9 @@ public indirect enum Expr: Equatable {
     case function(Prototype, Expr)
     /// name start end step body
     case `for`(String, Expr, Expr, Expr?, Expr)
+    
+    /// op, operand
+    case unary(Character, Expr)
 }
 
 extension Expr: CustomStringConvertible {
@@ -111,6 +114,12 @@ extension Expr: CustomStringConvertible {
             for \(name) = \(start) , \(end)\(_step) in
                 \(body)
             """
+        case let .unary(op, expr):
+            return """
+            \(op)\(expr)
+            """
+        default:
+            return ""
         }
     }
 }

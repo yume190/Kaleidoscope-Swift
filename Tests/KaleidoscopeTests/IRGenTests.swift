@@ -15,7 +15,7 @@ import class Foundation.Bundle
 
 final class IRGenTests: XCTestCase {
     
-    var contexts = Contexts()
+    private var contexts = Contexts()
     
     class override func setUp() {
         super.setUp()
@@ -26,7 +26,7 @@ final class IRGenTests: XCTestCase {
     
     override func setUp() {
         super.setUp()
-        self.contexts = Contexts()
+        self.contexts = Contexts(isActiveOptimizerPass: false)
     }
     
     func testTopCommand() {
@@ -34,7 +34,8 @@ final class IRGenTests: XCTestCase {
 
         let exprs = Parser(input: code).parse()
         XCTAssertEqual(exprs.count, 1)
-        XCTAssertEqual(exprs[0].codeGen(self.contexts)?.pipe(), """
+        let ir = exprs.compactMap {$0.codeGen(self.contexts)?.pipe()}.joined(separator: "")
+        XCTAssertEqual(ir, """
 
         define double @0() {
         entry:
@@ -48,8 +49,9 @@ final class IRGenTests: XCTestCase {
         let code = "def foo(a b) a*a + 2*a*b + b*b;"
 
         let exprs = Parser(input: code).parse()
+        let ir = exprs.compactMap {$0.codeGen(self.contexts)?.pipe()}.joined(separator: "")
         XCTAssertEqual(exprs.count, 1)
-        XCTAssertEqual(exprs[0].codeGen(self.contexts)?.pipe(), """
+        XCTAssertEqual(ir, """
 
         define double @foo(double %a, double %b) {
         entry:
@@ -65,44 +67,47 @@ final class IRGenTests: XCTestCase {
         """)
     }
     
-//    /// Problem: (x + 3) * 2
-//    /// Answer: tmp = x + 3, result = tmp*tmp;
-//    /// tips:
-//    ///   * reassociation of expressions(to make the add’s lexically identical)
-//    ///    * Common Subexpression Elimination (CSE)
-//    func testOptimizePass() {
-//        let code1 = "def test(x) (1+2+x)*(x+(1+2));"
-//
-//        let exprs1 = Parser(input: code1).parse()
-//        XCTAssertEqual(exprs1.count, 1)
-//        XCTAssertEqual(exprs1[0].codeGen(self.contexts)?.pipe(), """
-//
-//        define double @test(double %x) {
-//        entry:
-//          %addtmp = fadd double 3.000000e+00, %x
-//          %addtmp1 = fadd double %x, 3.000000e+00
-//          %multmp = fmul double %addtmp, %addtmp1
-//          ret double %multmp
-//        }
-//
-//        """)
-//        
-//        let code2 = "def test2(x) (1+2+x)*(x+(1+2));"
-//
-//        activeOptimizerPass()
-//        let exprs2 = Parser(input: code2).parse()
-//        XCTAssertEqual(exprs2.count, 1)
-//        XCTAssertEqual(exprs2[0].codeGen(self.contexts)?.pipe(), """
-//
-//        define double @test2(double %x) {
-//        entry:
-//          %addtmp = fadd double %x, 3.000000e+00
-//          %multmp = fmul double %addtmp, %addtmp
-//          ret double %multmp
-//        }
-//
-//        """)
-//    }
+    /// Problem: (x + 3) * 2
+    /// Answer: tmp = x + 3, result = tmp*tmp;
+    /// tips:
+    ///   * reassociation of expressions(to make the add’s lexically identical)
+    ///    * Common Subexpression Elimination (CSE)
+    func testOptimizePassNone() {
+        let code = "def test(x) (1+2+x)*(x+(1+2));"
+        
+        let exprs = Parser(input: code).parse()
+        let ir = exprs.compactMap {$0.codeGen(self.contexts)?.pipe()}.joined(separator: "")
+        XCTAssertEqual(ir, """
+
+        define double @test(double %x) {
+        entry:
+          %addtmp = fadd double 3.000000e+00, %x
+          %addtmp1 = fadd double %x, 3.000000e+00
+          %multmp = fmul double %addtmp, %addtmp1
+          ret double %multmp
+        }
+
+        """)
+    }
+    
+    func testOptimizePassHave() {
+        self.contexts = Contexts()
+        
+        let code = "def test(x) (1+2+x)*(x+(1+2));"
+        
+        let exprs = Parser(input: code).parse()
+        let ir = exprs.compactMap {$0.codeGen(self.contexts)?.pipe()}.joined(separator: "")
+        XCTAssertEqual(ir, """
+
+        define double @test(double %x) {
+        entry:
+          %addtmp = fadd double %x, 3.000000e+00
+          %multmp = fmul double %addtmp, %addtmp
+          ret double %multmp
+        }
+
+        """)
+    }
     
     func testIf() {
         let code = """
