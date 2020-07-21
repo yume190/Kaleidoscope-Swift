@@ -159,13 +159,13 @@ final class ParserTests: XCTestCase {
         let code = """
         def density(d)
           if d < 8 then
-            1
+            1 # ' '
           else if d < 4 then
-            2
+            2 # ' '
           else if d < 2 then
-            3
+            3 # ' '
           else
-            4;
+            4; # ' '
         """
         
         let exprs = Parser(input: code).parse()

@@ -62,14 +62,8 @@ extension Parser {
 
         /// top ::= definition | external | expression | ';'
         public func next() -> Expr? {
-            while case .comment(_) = self.currentToken {
-                self.nextToken() // eat comment
-            }
             switch self.currentToken {
             case .none: return nil
-            case .mark(let m) where m == .semicolon :
-                _ = self.nextToken()
-                return self.next()
             case .keyword(.def):
                 return self.parseDefinition()
             case .keyword(.extern):
@@ -84,7 +78,17 @@ extension Parser {
 extension Parser.Iterator {
     @discardableResult
     private final func nextToken() -> Token? {
-        self.currentToken = iterator.next()
+        while let token = iterator.next() {
+            if case .comment = token {
+                continue
+            } else if case .mark(.semicolon) = token {
+                continue
+            } else {
+                self.currentToken = token
+                return self.currentToken
+            }
+        }
+        self.currentToken = nil
         return self.currentToken
     }
     
