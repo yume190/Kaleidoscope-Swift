@@ -5,11 +5,14 @@ graph:
 build:
 	@swift build -c release
 
-average.o: build average.k
-	@swift run -c release kaleidoscope average.k -o average.o
+# @swift run -c release kaleidoscope main.k -o main.ko
+%.ko : %.k build
+	@swift run -c release kaleidoscope $< -o $@
 
-main: main.swift average.o
-	@swiftc average.o main.swift -o main
+# 	@swiftc main.ko main.swift -o main
+%.so: %.swift %.ko
+	@swiftc $*.ko $< -o $@
 
-run: main
-	@./main
+# @./main.so
+%: %.so
+	@./$@.so
