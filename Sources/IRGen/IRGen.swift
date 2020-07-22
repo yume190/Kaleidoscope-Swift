@@ -106,7 +106,7 @@ extension Expr {
         case let .call(name, args):
             
             guard let f: Function = contexts.module.function(named: name) else {
-                printE("Unknown function referenced")
+                printE("Unknown function referenced: \(name)")
                 return nil
             }
             
