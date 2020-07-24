@@ -6,8 +6,11 @@ build:
 	@swift build -c release
 
 # @swift run -c release kaleidoscope main.k -o main.ko
-%.ko : %.k build
+%.ko: %.k build
 	@swift run -c release kaleidoscope $< -o $@
+
+%.ll: %.k build
+	@swift run -c release kaleidoscope $< -o $@ -ir -op
 
 # 	@swiftc main.ko main.swift -o main
 %.so: %.swift %.ko
