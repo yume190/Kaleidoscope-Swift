@@ -45,7 +45,9 @@ extension Parser {
             BinaryOperator.less.rawValue: 10,
             BinaryOperator.plus.rawValue: 20,
             BinaryOperator.minus.rawValue: 20,
-            BinaryOperator.times.rawValue: 40
+            BinaryOperator.times.rawValue: 40,
+            BinaryOperator.equals.rawValue: 2
+            
         ]
         
         @inline(__always)
@@ -460,6 +462,49 @@ extension Parser.Iterator {
         guard let body = self.parseExpression() else {return nil}
         
         return .for(name, start, end, step, body)
+    }
+    
+    private final func parseVarExpr() -> Expr? {
+        nextToken() // eat var
+        
+        var varNames: [Pair<String, Expr>] = []
+        
+        guard case .identifier = currentToken else {
+            printE("expected identifier after var")
+            return nil
+        }
+        
+        while true {
+            let name = currentToken?.raw
+            nextToken() // eat id
+            
+            var `init`: Expr?
+            if .operator(.equals) == currentToken {
+                nextToken() // eat =
+                
+                `init` = self.parseExpression()
+                if `init` == nil { return nil }
+            }
+            varNames.append(.init(name!, `init`!))
+
+            if .mark(.comma) != currentToken { break }
+            nextToken() // eat ,
+
+            if case .identifier = currentToken {
+            } else {
+                printE("expected identifier list after var")
+                return nil
+            }
+        }
+
+        if .keyword(.in) != currentToken {
+            printE("expected 'in' keyword after 'var'")
+            return nil
+        }
+        nextToken() // eat in
+        
+        guard let body = self.parseExpression() else { return nil }
+        return .var(varNames, body)
     }
 }
 

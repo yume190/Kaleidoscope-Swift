@@ -20,9 +20,21 @@ struct Command: ParsableCommand {
     @Option(name: .shortAndLong, help: "compiled out object file")
     var output: String = "output.o"
     
+    @Flag(name: [.customLong("ir", withSingleDash: true)], help: "generate ir")
+    var isGenerateIR = false
+    
+    @Flag(name: [.customLong("op", withSingleDash: true)], help: "add op pass")
+    var optimize = false
+    
     func run() throws {
         let code = try String(contentsOfFile: self.file)
-        let contexts = Contexts()
+        let contexts = Contexts(isActiveOptimizerPass: optimize)
+        if isGenerateIR {
+            let url = URL(fileURLWithPath: output)
+            let ll = contexts.pipe(input: code)
+            try ll.write(to: url, atomically: true, encoding: .utf8)
+            return
+        }
         contexts.codeGen(input: code)
         
         /// x86_64-apple-darwin19.5.0

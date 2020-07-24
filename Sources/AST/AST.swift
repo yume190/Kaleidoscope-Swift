@@ -33,6 +33,15 @@ public struct Prototype: Equatable {
         self.precedence = precedence
     }
 }
+public struct Pair<A: Equatable, B: Equatable>: Equatable {
+    public let first: A
+    public let second: B
+    
+    public init(_ first: A, _ second: B) {
+        self.first = first
+        self.second = second
+    }
+}
 public indirect enum Expr: Equatable {
     case number(Double)
     case variable(String)
@@ -43,18 +52,22 @@ public indirect enum Expr: Equatable {
     /// std::unique_ptr<ExprAST> Cond, Then, Else;
     /// Cond, Then, Else;
     case `if`(Expr, Expr, Expr)
-    case call(String, [Expr])
+    case call(_ name: String, _ exprs: [Expr])
 
     /// name params
-    case prototype(Prototype)
+    case prototype(_ proto: Prototype)
         
     /// name params expr
-    case function(Prototype, Expr)
+    case function(_ proto: Prototype, _ expr: Expr)
     /// name start end step body
-    case `for`(String, Expr, Expr, Expr?, Expr)
+    case `for`(_ name: String, _ start: Expr, _ end: Expr, _ step: Expr?, _ body: Expr)
     
     /// op, operand
-    case unary(Character, Expr)
+    case unary(_ op: Character, _ operand: Expr)
+    
+    // lesson 7 variable
+    /// name
+    case `var`(_ names: [Pair<String, Expr>], _ body: Expr)
 }
 
 extension Expr: CustomStringConvertible {

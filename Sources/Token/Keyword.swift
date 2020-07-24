@@ -12,6 +12,9 @@ public enum Keyword: String {
     
     case binary
     case unary
+    
+    // lesson 7
+    case `var`
 }
 
 extension Keyword: Tokenable {

@@ -12,7 +12,7 @@ public final class Contexts {
     public let builder: IRBuilder
     public let passPipeliner: PassPipeliner
     
-    fileprivate var namedValues: [String:IRValue] = [:]
+    fileprivate var namedValues: [String: IRInstruction] = [:]
     /// [String: PrototypeAST]
     fileprivate var functionProtos: [String: Prototype] = [:]
     fileprivate var binopPrecedence: [Character: Precedence] = [:]
@@ -42,10 +42,15 @@ public final class Contexts {
     /// L4 Optimizer Pass
     private final func activeOptimizerPass() {
         passPipeliner.addStage("YumeOptimizeStatge") { builder in
+            // Promote allocas to registers.
+            builder.add(Pass.promoteMemoryToRegister)
+            // Do simple "peephole" optimizations and bit-twiddling optzns.
             builder.add(Pass.instructionCombining)
+            // Reassociate expressions.
             builder.add(Pass.reassociate)
             builder.add(Pass.gvn)
             builder.add(Pass.cfgSimplification)
+            
         }
         // TheFPM->doInitialization();
     }
@@ -60,6 +65,13 @@ public final class Contexts {
             expr.codeGen(self)?.dump()
         }
     }
+    
+    public func pipe(input: String) -> String {
+        return Parser(input: input).compactMap { (expr) in
+            return expr.codeGen(self)?.pipe()
+        }.joined(separator: "")
+    }
+    
 }
 
 extension Expr {
@@ -72,8 +84,22 @@ extension Expr {
                 printE("Unknown variable name")
                 return nil
             }
-            return v
+            return contexts.builder.buildLoad(v, name: variable)
         case let .binary(lhs, op, rhs):
+            if op == BinaryOperator.equals.rawValue {
+                guard case let .variable(name) = lhs else {
+                    printE("destination of '=' must be a variable")
+                    return nil
+                }
+                guard let val = rhs.codeGen(contexts) else {return nil}
+                guard let variable = contexts.namedValues[name] else {
+                    printE("Unknown variable name \(name)")
+                    return nil
+                }
+                contexts.builder.buildStore(val, to: variable)
+                return val
+            }
+            
             guard let l = lhs.codeGen(contexts) else {return nil}
             guard let r = rhs.codeGen(contexts) else {return nil}
             
@@ -151,7 +177,9 @@ extension Expr {
             
             contexts.namedValues.removeAll()
             for arg in function.parameters {
-                contexts.namedValues[arg.name] = arg
+                let alloca = contexts.builder.buildAlloca(type: FloatType.double, count: 0, name: arg.name)
+                contexts.builder.buildStore(arg, to: alloca)
+                contexts.namedValues[arg.name] = alloca
             }
             
             if let retValue = expr.codeGen(contexts) {
@@ -211,9 +239,12 @@ extension Expr {
             return pn
             
         case let .for(name, start, end, step, body):
-            guard let startV = start.codeGen(contexts) else { return nil }
-            
             guard let theFunction = contexts.builder.insertBlock?.parent else {return nil}
+
+            let alloca = contexts.builder.buildAlloca(type: FloatType.double, count: 0, name: name)
+            
+            guard let startV = start.codeGen(contexts) else { return nil }
+            contexts.builder.buildStore(startV, to: alloca)
             let preheaderBB = contexts.builder.insertBlock
             let loopBB = theFunction.appendBasicBlock(named: "loop", in: contexts.context)
             contexts.builder.buildBr(loopBB)
@@ -226,18 +257,24 @@ extension Expr {
             contexts.namedValues[name] = variable
 
             guard let _ = body.codeGen(contexts) else { return nil }
-            var stepV: IRValue?
+            
+            var stepV: IRValue
             if let _step = step {
-                stepV = _step.codeGen(contexts)
-                if stepV == nil {return nil}
+                if let _stepV = _step.codeGen(contexts) {
+                    stepV = _stepV
+                } else {
+                    return nil
+                }
             } else {
                 /// APFloat(1.0)
                 stepV = FloatType.double.constant(1)
             }
             
-            let nextVar = contexts.builder.buildAdd(variable, stepV!, name: "nextvar")
-            
             guard let endV = end.codeGen(contexts) else { return nil }
+            let curVar = contexts.builder.buildLoad(alloca)
+//            let nextVar = contexts.builder.buildAdd(variable, stepV, name: "nextvar")
+            let nextVar = contexts.builder.buildAdd(curVar, stepV, name: "nextvar")
+            contexts.builder.buildStore(nextVar, to: alloca)
             
             let endV2 = contexts.builder.buildFCmp(endV, FloatType.double.constant(0), .orderedNotEqual, name: "loopcond")
             
@@ -263,6 +300,35 @@ extension Expr {
             }
             
             return contexts.builder.buildCall(f, args: [operandV], name: "unop")
+        case let .var(names, body):
+            var oldBindings: [IRInstruction] = []
+//            let function = contexts.builder.insertBlock?.parent
+            for name in names {
+                let varName = name.first
+                let `init` = name.second
+                
+                let initVal: IRValue
+                
+                if let _initVal = `init`.codeGen(contexts) {
+                    initVal = _initVal
+                } else {
+                    return nil
+                }
+                
+                let alloca = contexts.builder.buildAlloca(type: FloatType.double, count: 0, name: varName)
+                contexts.builder.buildStore(initVal, to: alloca)
+                oldBindings.append(contexts.namedValues[varName]!)
+                
+                contexts.namedValues[varName] = alloca
+            }
+            
+            guard let bodyV = body.codeGen(contexts) else {return nil}
+            
+            for pair in names.enumerated() {
+                contexts.namedValues[pair.element.first] = oldBindings[pair.offset]
+            }
+            
+            return bodyV
         default:
             return nil
         }

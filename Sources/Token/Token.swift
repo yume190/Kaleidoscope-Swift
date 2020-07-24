@@ -50,6 +50,25 @@ public extension Token {
 }
 
 extension Token: CustomStringConvertible {
+    public var raw: String {
+        switch self {
+        case .keyword(let kw):
+            return kw.rawValue
+        case .operator(let op):
+            return "\(op.rawValue)"
+        case .mark(let m):
+            return "\(m.rawValue)"
+        case .identifier(let id):
+            return id
+        case .number(let num):
+            return "\(num)"
+        case .comment(let c):
+            return "# \(c)"
+        case let .other(char):
+            return "\(char)"
+        }
+    }
+
     public var description: String {
         switch self {
         case .keyword(let kw):
