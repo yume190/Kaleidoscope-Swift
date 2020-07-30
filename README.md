@@ -37,3 +37,27 @@ cd Prac
 make lesson6
 make main
 ```
+
+---
+
+## Choose target
+
+``` sh
+clang --version | grep
+Target: x86_64-apple-darwin19.5.0
+
+llvm-as < /dev/null | llc -march=x86 -mattr=help
+Available CPUs for this target:
+
+  amdfam10       - Select the amdfam10 processor.
+  athlon         - Select the athlon processor.
+  ...
+
+Available features for this target:
+
+  16bit-mode                    - 16-bit mode (i8086).
+  32bit-mode                    - 32-bit mode (80386).
+  3dnow                         - Enable 3DNow! instructions.
+  ...
+
+```

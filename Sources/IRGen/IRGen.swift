@@ -177,7 +177,7 @@ extension Expr {
             
             contexts.namedValues.removeAll()
             for arg in function.parameters {
-                let alloca = contexts.builder.buildAlloca(type: FloatType.double, count: 0, name: arg.name)
+                let alloca = contexts.builder.buildAlloca(type: FloatType.double, name: arg.name)
                 contexts.builder.buildStore(arg, to: alloca)
                 contexts.namedValues[arg.name] = alloca
             }
@@ -241,7 +241,7 @@ extension Expr {
         case let .for(name, start, end, step, body):
             guard let theFunction = contexts.builder.insertBlock?.parent else {return nil}
 
-            let alloca = contexts.builder.buildAlloca(type: FloatType.double, count: 0, name: name)
+            let alloca = contexts.builder.buildAlloca(type: FloatType.double, name: name)
             
             guard let startV = start.codeGen(contexts) else { return nil }
             contexts.builder.buildStore(startV, to: alloca)
@@ -301,7 +301,7 @@ extension Expr {
             
             return contexts.builder.buildCall(f, args: [operandV], name: "unop")
         case let .var(names, body):
-            var oldBindings: [IRInstruction] = []
+            var oldBindings: [IRInstruction?] = []
 //            let function = contexts.builder.insertBlock?.parent
             for name in names {
                 let varName = name.first
@@ -315,9 +315,9 @@ extension Expr {
                     return nil
                 }
                 
-                let alloca = contexts.builder.buildAlloca(type: FloatType.double, count: 0, name: varName)
+                let alloca = contexts.builder.buildAlloca(type: FloatType.double, name: varName)
                 contexts.builder.buildStore(initVal, to: alloca)
-                oldBindings.append(contexts.namedValues[varName]!)
+                oldBindings.append(contexts.namedValues[varName])
                 
                 contexts.namedValues[varName] = alloca
             }

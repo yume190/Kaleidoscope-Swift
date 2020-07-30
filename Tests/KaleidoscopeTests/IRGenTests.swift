@@ -193,6 +193,17 @@ final class IRGenTests: XCTestCase {
         """)
     }
     
+    func testLesson7() {
+        let code = """
+        def a()
+            var a = 1 in a;
+        """
+        
+        let exprs = Parser(input: code).parse()
+        let ir = exprs.compactMap {$0.codeGen(self.contexts)?.pipe()}.joined(separator: "")
+        print(ir)
+    }
+    
 //    func testABC() {
 //        dump(code: "def foo(a b) a*a + 2*a*b + b*b;")
 //

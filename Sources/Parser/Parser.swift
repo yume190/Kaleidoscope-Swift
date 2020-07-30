@@ -310,11 +310,14 @@ extension Parser.Iterator {
         case .mark(let mark) where mark == .openParen:
             return self.parseParenExpr()
         /// L5
-        case .keyword(let kw) where kw == .if:
+        case .keyword(.if):
             return self.parseIfExpr()
         /// L5
-        case .keyword(let kw) where kw == .for:
+        case .keyword(.for):
             return self.parseForExpr()
+        /// L7
+        case .keyword(.var):
+            return self.parseVarExpr()
         default:
             printE("unknown token when expecting an expression")
             return nil
