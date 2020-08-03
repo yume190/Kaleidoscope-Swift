@@ -240,22 +240,19 @@ extension Expr {
             
         case let .for(name, start, end, step, body):
             guard let theFunction = contexts.builder.insertBlock?.parent else {return nil}
-
+            
             let alloca = contexts.builder.buildAlloca(type: FloatType.double, name: name)
             
             guard let startV = start.codeGen(contexts) else { return nil }
             contexts.builder.buildStore(startV, to: alloca)
-            let preheaderBB = contexts.builder.insertBlock
             let loopBB = theFunction.appendBasicBlock(named: "loop", in: contexts.context)
             contexts.builder.buildBr(loopBB)
             
             contexts.builder.positionAtEnd(of: loopBB)
-            let variable = contexts.builder.buildPhi(FloatType.double, name: name)
-            variable.addIncoming([(startV, preheaderBB!)])
             
             let oldValue = contexts.namedValues[name]
-            contexts.namedValues[name] = variable
-
+            contexts.namedValues[name] = alloca
+            
             guard let _ = body.codeGen(contexts) else { return nil }
             
             var stepV: IRValue
@@ -272,17 +269,13 @@ extension Expr {
             
             guard let endV = end.codeGen(contexts) else { return nil }
             let curVar = contexts.builder.buildLoad(alloca)
-//            let nextVar = contexts.builder.buildAdd(variable, stepV, name: "nextvar")
             let nextVar = contexts.builder.buildAdd(curVar, stepV, name: "nextvar")
             contexts.builder.buildStore(nextVar, to: alloca)
             
             let endV2 = contexts.builder.buildFCmp(endV, FloatType.double.constant(0), .orderedNotEqual, name: "loopcond")
-            
-            let loopEndBB = contexts.builder.insertBlock
             let afterBB = theFunction.appendBasicBlock(named: "afterloop", in: contexts.context)
             contexts.builder.buildCondBr(condition: endV2, then: loopBB, else: afterBB)
             contexts.builder.positionAtEnd(of: afterBB)
-            variable.addIncoming([(nextVar, loopEndBB!)])
             if let oldValue = oldValue {
                 contexts.namedValues[name] = oldValue
             } else {
