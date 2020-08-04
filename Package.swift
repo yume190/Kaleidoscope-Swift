@@ -17,7 +17,7 @@ let package = Package(
         .package(url: "https://github.com/yume190/LLVMSwift.git", from: "0.6.0"),
         // .package(url: "https://github.com/llvm-swift/LLVMSwift.git", from: "0.6.0")
 
-        .package(url: "https://github.com/apple/swift-argument-parser", from: "0.2.0")
+        .package(url: "https://github.com/apple/swift-argument-parser", from: "0.2.1")
         
     ],
     targets: [

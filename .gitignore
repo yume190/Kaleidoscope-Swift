@@ -5,3 +5,9 @@
 xcuserdata/
 
 LLVMSwift/
+/.swiftpm
+
+Prac/*.o
+Prac/*.ko
+Prac/*.so
+Prac/*.lo
